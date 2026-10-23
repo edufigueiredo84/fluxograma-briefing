@@ -27,6 +27,12 @@
         "displayName": "Vellum Ground",
         "canonical": "#F6F3EC",
         "tonalRamp": ["#16181D", "#2E3038", "#4A4D55", "#8C8577", "#B8B1A2", "#D8D3C8", "#EFECE4", "#F6F3EC"]
+      },
+      "night-slate": {
+        "role": "neutral",
+        "displayName": "Night Blueprint Slate",
+        "canonical": "#111318",
+        "tonalRamp": ["#111318", "#14171E", "#171A21", "#1E222B", "#2E3443", "#3E465A", "#9CA4B4", "#F3F1EA"]
       }
     },
     "typographyMeta": {

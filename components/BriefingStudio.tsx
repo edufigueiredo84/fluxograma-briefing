@@ -41,6 +41,8 @@ import {
   RotateCcw,
   AlertTriangle,
   X,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { BRIEFING_NODE_TYPES } from "@/components/nodes/BriefingNodes";
 import {
@@ -58,11 +60,14 @@ import type {
 } from "@/lib/types";
 
 const DEFAULT_EDGE_STYLE = {
-  stroke: "#16181D",
+  stroke: "#1B4DFF",
   strokeWidth: 1.75,
 };
 
-function styleEdges(edges: BriefingEdge[]): BriefingEdge[] {
+function styleEdges(
+  edges: BriefingEdge[],
+  isDark = true
+): BriefingEdge[] {
   return edges.map((e) => {
     const isYes =
       e.sourceHandle === "yes" ||
@@ -75,7 +80,17 @@ function styleEdges(edges: BriefingEdge[]): BriefingEdge[] {
         .toUpperCase()
         .startsWith("NÃO");
 
-    const strokeColor = isYes ? "#0F766E" : isNo ? "#D9381E" : "#1B4DFF";
+    const strokeColor = isYes
+      ? isDark
+        ? "#2DD4BF"
+        : "#0F766E"
+      : isNo
+      ? isDark
+        ? "#F87171"
+        : "#D9381E"
+      : isDark
+      ? "#4D7CFE"
+      : "#1B4DFF";
 
     return {
       ...e,
@@ -85,13 +100,13 @@ function styleEdges(edges: BriefingEdge[]): BriefingEdge[] {
         strokeWidth: 2,
       },
       labelStyle: {
-        fill: "#16181D",
+        fill: isDark ? "#F3F1EA" : "#16181D",
         fontWeight: 600,
         fontSize: 11,
         fontFamily: "var(--font-mono), monospace",
       },
       labelBgStyle: {
-        fill: "#FAF8F4",
+        fill: isDark ? "#1E222B" : "#FAF8F4",
         stroke: strokeColor,
         strokeWidth: 1,
       },
@@ -151,6 +166,7 @@ export function BriefingStudio() {
   const [savedBoards, setSavedBoards] = useState<BoardProject[]>(
     Object.values(BOARD_TEMPLATES)
   );
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -175,9 +191,28 @@ export function BriefingStudio() {
     }
   }, []);
 
+  // Re-style edge labels whenever theme toggles
+  useEffect(() => {
+    setEdges((eds) => styleEdges(eds, theme === "dark"));
+  }, [theme, setEdges]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("briefing_theme", next);
+      }
+      return next;
+    });
+  }, []);
+
   // Load saved anonKey and URL query parameters (?board=...&mode=client)
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const savedTheme = window.localStorage.getItem("briefing_theme");
+    if (savedTheme === "light" || savedTheme === "dark") {
+      setTheme(savedTheme);
+    }
     const storedKey =
       window.localStorage.getItem("briefing_supabase_anon_key") || "";
     if (storedKey) setAnonKey(storedKey);
@@ -859,7 +894,7 @@ export function BriefingStudio() {
     if (!viewportEl) return;
     try {
       const dataUrl = await toPng(viewportEl, {
-        backgroundColor: "#F6F3EC",
+        backgroundColor: theme === "dark" ? "#111318" : "#F6F3EC",
         pixelRatio: 2,
       });
       const a = document.createElement("a");
@@ -879,12 +914,15 @@ export function BriefingStudio() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col bg-[#F6F3EC] text-[#16181D]">
+    <div
+      data-theme={theme}
+      className="h-screen w-screen overflow-hidden flex flex-col bg-[var(--bg-vellum)] text-[var(--ink-primary)] transition-colors duration-200"
+    >
       {/* TOP ARCHITECTURAL TITLE BLOCK HEADER */}
-      <header className="h-[58px] shrink-0 bg-[#EFECE4] border-b border-[#16181D] px-3 sm:px-4 flex items-center justify-between gap-2 z-20">
+      <header className="h-[58px] shrink-0 bg-[var(--bg-panel)] border-b border-[var(--rule-strong)] px-3 sm:px-4 flex items-center justify-between gap-2 z-20">
         {/* Left: Brand + Project Identity */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-[#16181D] text-[#FAF8F4] rounded-[6px] shrink-0">
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-[#16181D] text-[#FAF8F4] border border-[var(--rule-hairline)] rounded-[6px] shrink-0">
             <PenTool className="w-3.5 h-3.5 text-[#F5C542]" />
             <span className="font-mono text-[11px] font-bold tracking-tight">
               PLANTA · BRIEFING
@@ -900,22 +938,22 @@ export function BriefingStudio() {
               onChange={(e) =>
                 setBoardMeta((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="font-bold text-[14px] text-[#16181D] bg-transparent border border-transparent hover:border-[#D8D3C8] focus:border-[#1B4DFF] focus:bg-[#FAF8F4] px-2 py-0.5 rounded-[5px] truncate max-w-[220px] sm:max-w-[300px] focus:outline-none"
+              className="font-bold text-[14px] text-[var(--ink-primary)] bg-transparent border border-transparent hover:border-[var(--rule-hairline)] focus:border-[#1B4DFF] focus:bg-[var(--bg-card)] px-2 py-0.5 rounded-[5px] truncate max-w-[220px] sm:max-w-[300px] focus:outline-none"
             />
-            <span className="hidden md:inline-flex items-center font-mono text-[11px] px-2 py-0.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[4px] text-[#4A4D55] shrink-0">
+            <span className="hidden md:inline-flex items-center font-mono text-[11px] px-2 py-0.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[4px] text-[var(--ink-secondary)] shrink-0">
               Cliente: {boardMeta.clientName}
             </span>
           </div>
 
           {/* Template Selector */}
           {!isClientMode && (
-            <div className="hidden lg:flex items-center gap-1.5 pl-2 border-l border-[#D8D3C8]">
-              <FolderKanban className="w-3.5 h-3.5 text-[#4A4D55]" />
+            <div className="hidden lg:flex items-center gap-1.5 pl-2 border-l border-[var(--rule-hairline)]">
+              <FolderKanban className="w-3.5 h-3.5 text-[var(--ink-secondary)]" />
               <select
                 aria-label="Selecionar template de jornada"
                 onChange={(e) => handleSelectTemplate(e.target.value)}
                 defaultValue="crm-funil"
-                className="font-mono text-[11px] bg-[#FAF8F4] border border-[#D8D3C8] rounded-[6px] px-2 py-1 text-[#16181D] focus:outline-none focus:border-[#1B4DFF]"
+                className="font-mono text-[11px] bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[6px] px-2 py-1 text-[var(--ink-primary)] focus:outline-none focus:border-[#1B4DFF]"
               >
                 <option value="crm-funil">
                   Template: Funil CRM & Vendas B2B
@@ -940,7 +978,7 @@ export function BriefingStudio() {
             onSubmit={handleQuickChainGenerate}
             className="hidden xl:flex items-center flex-1 max-w-[460px] mx-2"
           >
-            <div className="flex items-center w-full bg-[#FAF8F4] border border-[#16181D] rounded-[8px] overflow-hidden focus-within:ring-2 focus-within:ring-[#1B4DFF]/25">
+            <div className="flex items-center w-full bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[8px] overflow-hidden focus-within:ring-2 focus-within:ring-[#1B4DFF]/25">
               <span className="pl-2.5 pr-1.5 text-[#1B4DFF] shrink-0">
                 <Sparkles className="w-3.5 h-3.5" />
               </span>
@@ -949,11 +987,11 @@ export function BriefingStudio() {
                 value={quickChainInput}
                 onChange={(e) => setQuickChainInput(e.target.value)}
                 placeholder="Captura rápida: Tela: Login -> Decisão: Aprovado? -> API: Asaas"
-                className="w-full py-1.5 px-1 text-[12px] bg-transparent text-[#16181D] placeholder:text-[#4A4D55] focus:outline-none"
+                className="w-full py-1.5 px-1 text-[12px] bg-transparent text-[var(--ink-primary)] placeholder:text-[var(--ink-secondary)] focus:outline-none"
               />
               <button
                 type="submit"
-                className="px-2.5 py-1.5 bg-[#16181D] hover:bg-[#1B4DFF] text-[#FAF8F4] font-mono text-[10.5px] font-semibold shrink-0 flex items-center gap-1 transition-colors"
+                className="px-2.5 py-1.5 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] font-mono text-[11px] font-semibold shrink-0 flex items-center gap-1 transition-colors"
               >
                 <span>Gerar</span>
                 <ArrowRight className="w-3 h-3" />
@@ -962,7 +1000,7 @@ export function BriefingStudio() {
           </form>
         )}
 
-        {/* Right: Clear CTA + Mode Toggle + Export PRD + Share */}
+        {/* Right: Clear CTA + Theme Toggle + Mode Toggle + Export PRD + Share */}
         <div className="flex items-center gap-1.5 shrink-0">
           {!isClientMode && (
             <>
@@ -971,7 +1009,7 @@ export function BriefingStudio() {
                   type="button"
                   onClick={handleClearCanvas}
                   title="Limpar todos os blocos da tela para começar do zero"
-                  className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[#FEF0EE] hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] flex items-center gap-1.5 transition-colors"
+                  className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[#D9381E]/15 hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] flex items-center gap-1.5 transition-colors"
                 >
                   <Eraser className="w-3.5 h-3.5" />
                   <span>Limpar Tela</span>
@@ -982,7 +1020,7 @@ export function BriefingStudio() {
                     type="button"
                     onClick={handleUndoClear}
                     title="Restaurar o fluxo anterior"
-                    className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[#FAF8F4] hover:bg-[#E5E0D5] text-[#16181D] border border-[#16181D] flex items-center gap-1.5 transition-colors"
+                    className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-strong)] flex items-center gap-1.5 transition-colors"
                   >
                     <RotateCcw className="w-3.5 h-3.5 text-[#1B4DFF]" />
                     <span>Desfazer Limpeza</span>
@@ -992,13 +1030,37 @@ export function BriefingStudio() {
             </>
           )}
 
+          {/* Dark / Light Mode Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={
+              theme === "dark"
+                ? "Mudar para Modo Claro (Vellum Papel)"
+                : "Mudar para Dark Mode (Planta Noturna)"
+            }
+            className="px-2.5 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[7px] font-mono text-[11px] font-medium flex items-center gap-1.5 transition-colors"
+          >
+            {theme === "dark" ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-[#F5C542]" />
+                <span className="hidden sm:inline">Light</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-[#1B4DFF]" />
+                <span className="hidden sm:inline">Dark</span>
+              </>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={() => setIsClientMode((v) => !v)}
             className={`px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-medium border flex items-center gap-1.5 transition-colors ${
               isClientMode
-                ? "bg-[#FEF0EE] text-[#D9381E] border-[#D9381E]"
-                : "bg-[#FAF8F4] text-[#16181D] border-[#D8D3C8] hover:bg-[#E5E0D5]"
+                ? "bg-[#D9381E]/15 text-[#D9381E] border-[#D9381E]"
+                : "bg-[var(--bg-card)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] hover:bg-[var(--bg-subcard)]"
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -1011,7 +1073,7 @@ export function BriefingStudio() {
             type="button"
             onClick={handleExportPng}
             title="Exportar imagem PNG da planta"
-            className="p-1.5 bg-[#FAF8F4] hover:bg-[#E5E0D5] text-[#16181D] border border-[#D8D3C8] rounded-[7px]"
+            className="p-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[7px]"
           >
             <Camera className="w-4 h-4" />
           </button>
@@ -1023,7 +1085,7 @@ export function BriefingStudio() {
               setActiveTab("cloud");
               handleSaveCloud();
             }}
-            className="px-2.5 py-1.5 bg-[#FAF8F4] hover:bg-[#E5E0D5] text-[#16181D] border border-[#16181D] rounded-[7px] text-[12px] font-semibold flex items-center gap-1.5"
+            className="px-2.5 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-strong)] rounded-[7px] text-[12px] font-semibold flex items-center gap-1.5"
           >
             <Share2 className="w-3.5 h-3.5 text-[#0F766E]" />
             <span className="hidden sm:inline">Compartilhar</span>
@@ -1045,7 +1107,7 @@ export function BriefingStudio() {
             type="button"
             onClick={() => setDrawerOpen((o) => !o)}
             title={drawerOpen ? "Recolher painel lateral" : "Abrir painel lateral"}
-            className="p-1.5 bg-[#FAF8F4] hover:bg-[#E5E0D5] text-[#16181D] border border-[#D8D3C8] rounded-[7px]"
+            className="p-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[7px]"
           >
             {drawerOpen ? (
               <PanelRightClose className="w-4 h-4" />
@@ -1085,20 +1147,25 @@ export function BriefingStudio() {
               variant={BackgroundVariant.Dots}
               gap={20}
               size={1.35}
-              color="#B8B1A2"
+              color={theme === "dark" ? "#2E3443" : "#B8B1A2"}
             />
 
             <Controls
               position="bottom-left"
               showInteractive={false}
-              className="!bg-[#FAF8F4] !border !border-[#16181D] !rounded-[8px] !shadow-none overflow-hidden"
+              className="!bg-[var(--bg-card)] !border !border-[var(--rule-strong)] !rounded-[8px] !shadow-none overflow-hidden"
             />
 
             <MiniMap
               position="top-left"
               pannable
               zoomable
-              className="!bg-[#EFECE4] !border !border-[#16181D] !rounded-[10px] !shadow-none"
+              maskColor={
+                theme === "dark"
+                  ? "rgba(17, 19, 24, 0.72)"
+                  : "rgba(246, 243, 236, 0.72)"
+              }
+              className="!bg-[var(--bg-panel)] !border !border-[var(--rule-strong)] !rounded-[10px] !shadow-none"
               nodeColor={(n) => {
                 switch (n.data?.category) {
                   case "screen":
@@ -1114,16 +1181,16 @@ export function BriefingStudio() {
                   case "sticky":
                     return "#F5C542";
                   case "section":
-                    return "#D8D3C8";
+                    return theme === "dark" ? "#2E3443" : "#D8D3C8";
                   default:
-                    return "#16181D";
+                    return theme === "dark" ? "#F3F1EA" : "#16181D";
                 }
               }}
             />
 
             {/* Top-Right Telemetry & Legend Stamp on Canvas */}
             <Panel position="top-right" className="!m-3 hidden md:block">
-              <div className="px-3 py-2 bg-[#FAF8F4]/95 border border-[#16181D] rounded-[10px] flex items-center gap-3 font-mono text-[11px]">
+              <div className="px-3 py-2 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[10px] flex items-center gap-3 font-mono text-[11px] text-[var(--ink-primary)]">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-[2px] bg-[#1B4DFF]" />
                   Telas:{" "}
@@ -1161,7 +1228,7 @@ export function BriefingStudio() {
             {/* Bottom Floating FigJam + Product Architecture Dock */}
             {!isClientMode && (
               <Panel position="bottom-center" className="!mb-4">
-                <div className="px-2.5 py-2 bg-[#FAF8F4] border border-[#16181D] rounded-[14px] flex items-center gap-1.5 flex-wrap justify-center">
+                <div className="px-2.5 py-2 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[14px] flex items-center gap-1.5 flex-wrap justify-center">
                   {/* Product Semantics Group */}
                   <button
                     type="button"
@@ -1175,7 +1242,7 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => handleAddBlock("action")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
+                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
                   >
                     <Zap className="w-3.5 h-3.5 text-[#B45309]" />
                     <span>+ Ação</span>
@@ -1184,7 +1251,7 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => handleAddBlock("decision")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
+                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
                   >
                     <GitBranch className="w-3.5 h-3.5 text-[#D9381E]" />
                     <span>+ Decisão</span>
@@ -1193,7 +1260,7 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => handleAddBlock("integration")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
+                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
                   >
                     <Webhook className="w-3.5 h-3.5 text-[#6D28D9]" />
                     <span>+ API</span>
@@ -1202,13 +1269,13 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => handleAddBlock("database")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
+                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
                   >
                     <Database className="w-3.5 h-3.5 text-[#0F766E]" />
                     <span>+ Tabela DB</span>
                   </button>
 
-                  <span className="h-5 w-[1px] bg-[#D8D3C8] mx-0.5 hidden sm:inline-block" />
+                  <span className="h-5 w-[1px] bg-[var(--rule-hairline)] mx-0.5 hidden sm:inline-block" />
 
                   {/* FigJam Freeform Layer */}
                   <button
@@ -1223,7 +1290,7 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => handleAddBlock("shape")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
+                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
                   >
                     <Square className="w-3.5 h-3.5" />
                     <span>+ Forma</span>
@@ -1232,7 +1299,7 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => handleAddBlock("section")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
+                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
                   >
                     <Frame className="w-3.5 h-3.5" />
                     <span>+ Fase</span>
@@ -1240,12 +1307,12 @@ export function BriefingStudio() {
 
                   {nodes.length > 0 && (
                     <>
-                      <span className="h-5 w-[1px] bg-[#D8D3C8] mx-0.5 hidden sm:inline-block" />
+                      <span className="h-5 w-[1px] bg-[var(--rule-hairline)] mx-0.5 hidden sm:inline-block" />
                       <button
                         type="button"
                         onClick={handleClearCanvas}
                         title="Limpar toda a tela"
-                        className="px-2.5 py-1.5 rounded-[8px] bg-[#FEF0EE] hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
+                        className="px-2.5 py-1.5 rounded-[8px] bg-[#D9381E]/15 hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
                       >
                         <Eraser className="w-3.5 h-3.5" />
                         <span>Limpar</span>
@@ -1259,18 +1326,18 @@ export function BriefingStudio() {
             {/* Empty State Card when canvas is cleared */}
             {nodes.length === 0 && !isClientMode && (
               <Panel position="top-center" className="!mt-24">
-                <div className="p-5 bg-[#FAF8F4] border border-[#16181D] rounded-[14px] max-w-[420px] text-center space-y-3">
-                  <p className="text-[14px] font-bold text-[#16181D]">
+                <div className="p-5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[14px] max-w-[420px] text-center space-y-3">
+                  <p className="text-[14px] font-bold text-[var(--ink-primary)]">
                     Canvas Limpo · Pronto para o Briefing
                   </p>
-                  <p className="text-[12.5px] text-[#4A4D55] leading-relaxed">
+                  <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
                     Comece adicionando a primeira tela da jornada do cliente ou digite o fluxo completo na barra de captura rápida no topo.
                   </p>
                   <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
                     <button
                       type="button"
                       onClick={() => handleAddBlock("screen")}
-                      className="px-3.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
                     >
                       <Monitor className="w-3.5 h-3.5" />
                       <span>+ Criar 1ª Tela</span>
@@ -1278,7 +1345,7 @@ export function BriefingStudio() {
                     <button
                       type="button"
                       onClick={() => handleAddBlock("sticky")}
-                      className="px-3.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
                     >
                       <StickyNote className="w-3.5 h-3.5" />
                       <span>+ Adicionar Post-it</span>
@@ -1287,7 +1354,7 @@ export function BriefingStudio() {
                       <button
                         type="button"
                         onClick={handleUndoClear}
-                        className="px-3 py-2 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#16181D] text-[12px] font-medium inline-flex items-center gap-1.5 transition-colors"
+                        className="px-3 py-2 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-strong)] text-[12px] font-medium inline-flex items-center gap-1.5 transition-colors"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Desfazer</span>
@@ -1348,15 +1415,15 @@ export function BriefingStudio() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="clear-modal-title"
-            className="fixed inset-0 z-50 bg-[#16181D]/60 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center p-4"
           >
-            <div className="w-full max-w-[440px] bg-[#FAF8F4] border border-[#16181D] rounded-[14px] overflow-hidden">
-              <div className="px-4 py-3 bg-[#EFECE4] border-b border-[#16181D] flex items-center justify-between">
+            <div className="w-full max-w-[440px] bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[14px] overflow-hidden">
+              <div className="px-4 py-3 bg-[var(--bg-panel)] border-b border-[var(--rule-strong)] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-[#D9381E]" />
                   <h2
                     id="clear-modal-title"
-                    className="text-[14px] font-bold text-[#16181D]"
+                    className="text-[14px] font-bold text-[var(--ink-primary)]"
                   >
                     Confirmar Limpeza da Tela Toda
                   </h2>
@@ -1364,22 +1431,22 @@ export function BriefingStudio() {
                 <button
                   type="button"
                   onClick={() => setConfirmClearOpen(false)}
-                  className="p-1 text-[#4A4D55] hover:text-[#16181D] rounded-[4px]"
+                  className="p-1 text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] rounded-[4px]"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="p-4 space-y-3">
-                <p className="text-[12px] text-[#16181D] leading-relaxed">
+                <p className="text-[12px] text-[var(--ink-primary)] leading-relaxed">
                   Você está prestes a remover todos os{" "}
                   <strong>{nodes.length} blocos</strong> e{" "}
                   <strong>{edges.length} conexões</strong> atualmente desenhados no canvas do projeto{" "}
                   <strong>&ldquo;{boardMeta.title}&rdquo;</strong>.
                 </p>
 
-                <div className="p-3 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[8px] text-[12px] text-[#4A4D55] space-y-1">
-                  <p className="font-semibold text-[#16181D]">
+                <div className="p-3 bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[8px] text-[12px] text-[var(--ink-secondary)] space-y-1">
+                  <p className="font-semibold text-[var(--ink-primary)]">
                     Onde meu projeto atual fica guardado?
                   </p>
                   <p>
@@ -1401,7 +1468,7 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => executeClearCanvas(false)}
-                    className="w-full py-2 px-3 bg-[#FEF0EE] hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] rounded-[8px] text-[12px] font-semibold flex items-center justify-center gap-2 transition-colors"
+                    className="w-full py-2 px-3 bg-[#D9381E]/15 hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] rounded-[8px] text-[12px] font-semibold flex items-center justify-center gap-2 transition-colors"
                   >
                     <Eraser className="w-4 h-4" />
                     <span>Limpar Tela Toda Sem Salvar</span>
@@ -1410,7 +1477,7 @@ export function BriefingStudio() {
                   <button
                     type="button"
                     onClick={() => setConfirmClearOpen(false)}
-                    className="w-full py-2 px-3 bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] rounded-[8px] text-[12px] font-medium transition-colors"
+                    className="w-full py-2 px-3 bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[8px] text-[12px] font-medium transition-colors"
                   >
                     Cancelar e Voltar ao Fluxo
                   </button>

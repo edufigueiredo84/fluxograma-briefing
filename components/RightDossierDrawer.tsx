@@ -192,7 +192,6 @@ export function RightDossierDrawer({
     onUpdateNodeData(nodeId, { comments: updated });
   };
 
-  // Compute compiled output (whole board OR filtered to a single Phase)
   const compiledOutput =
     selectedPhaseId && selectedPhaseId !== "all"
       ? compilePhaseToMarkdown(board, selectedPhaseId)
@@ -230,16 +229,16 @@ export function RightDossierDrawer({
       : `/?board=${board.id}`;
 
   return (
-    <aside className="w-[376px] shrink-0 h-full bg-[#EFECE4] border-l border-[#16181D] flex flex-col select-none">
+    <aside className="w-[376px] shrink-0 h-full bg-[var(--bg-panel)] text-[var(--ink-primary)] border-l border-[var(--rule-strong)] flex flex-col select-none">
       {/* Top Tab Bar */}
-      <div className="grid grid-cols-4 border-b border-[#16181D] bg-[#F6F3EC]">
+      <div className="grid grid-cols-4 border-b border-[var(--rule-strong)] bg-[var(--bg-subcard)]">
         <button
           type="button"
           onClick={() => setActiveTab("inspector")}
-          className={`flex flex-col items-center justify-center py-2.5 px-1 text-[11px] font-medium border-r border-[#D8D3C8] transition-colors ${
+          className={`flex flex-col items-center justify-center py-2.5 px-1 text-[11px] font-medium border-r border-[var(--rule-hairline)] transition-colors ${
             activeTab === "inspector"
-              ? "bg-[#16181D] text-[#FAF8F4]"
-              : "text-[#16181D] hover:bg-[#E5E0D5]"
+              ? "bg-[#1B4DFF] text-[#FAF8F4]"
+              : "text-[var(--ink-primary)] hover:bg-[var(--bg-hover)]"
           }`}
         >
           <Sliders className="w-3.5 h-3.5 mb-1" />
@@ -249,10 +248,10 @@ export function RightDossierDrawer({
         <button
           type="button"
           onClick={() => setActiveTab("prd")}
-          className={`flex flex-col items-center justify-center py-2.5 px-1 text-[11px] font-medium border-r border-[#D8D3C8] transition-colors ${
+          className={`flex flex-col items-center justify-center py-2.5 px-1 text-[11px] font-medium border-r border-[var(--rule-hairline)] transition-colors ${
             activeTab === "prd"
               ? "bg-[#1B4DFF] text-[#FAF8F4]"
-              : "text-[#16181D] hover:bg-[#E5E0D5]"
+              : "text-[var(--ink-primary)] hover:bg-[var(--bg-hover)]"
           }`}
         >
           <FileText className="w-3.5 h-3.5 mb-1" />
@@ -262,10 +261,10 @@ export function RightDossierDrawer({
         <button
           type="button"
           onClick={() => setActiveTab("comments")}
-          className={`relative flex flex-col items-center justify-center py-2.5 px-1 text-[11px] font-medium border-r border-[#D8D3C8] transition-colors ${
+          className={`relative flex flex-col items-center justify-center py-2.5 px-1 text-[11px] font-medium border-r border-[var(--rule-hairline)] transition-colors ${
             activeTab === "comments"
-              ? "bg-[#16181D] text-[#FAF8F4]"
-              : "text-[#16181D] hover:bg-[#E5E0D5]"
+              ? "bg-[#1B4DFF] text-[#FAF8F4]"
+              : "text-[var(--ink-primary)] hover:bg-[var(--bg-hover)]"
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5 mb-1" />
@@ -280,7 +279,7 @@ export function RightDossierDrawer({
           className={`flex flex-col items-center justify-center py-2.5 px-1 text-[11px] font-medium transition-colors ${
             activeTab === "cloud"
               ? "bg-[#0F766E] text-[#FAF8F4]"
-              : "text-[#16181D] hover:bg-[#E5E0D5]"
+              : "text-[var(--ink-primary)] hover:bg-[var(--bg-hover)]"
           }`}
         >
           <Cloud className="w-3.5 h-3.5 mb-1" />
@@ -295,19 +294,19 @@ export function RightDossierDrawer({
           <>
             {!selectedNode ? (
               <div className="space-y-4">
-                <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#D8D3C8] pb-2">
-                    <h2 className="text-[14px] font-bold text-[#16181D]">
+                <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] space-y-3">
+                  <div className="flex items-center justify-between border-b border-[var(--rule-hairline)] pb-2">
+                    <h2 className="text-[14px] font-bold text-[var(--ink-primary)]">
                       Carimbo da Planta & Briefing
                     </h2>
-                    <span className="font-mono text-[10px] px-2 py-0.5 bg-[#EFECE4] border border-[#D8D3C8] rounded-[4px] text-[#16181D]">
+                    <span className="font-mono text-[10px] px-2 py-0.5 bg-[var(--bg-panel)] border border-[var(--rule-hairline)] rounded-[4px] text-[var(--ink-primary)]">
                       {board.version}
                     </span>
                   </div>
 
                   <div className="space-y-2.5">
                     <div>
-                      <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                      <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                         NOME DO PROJETO / SISTEMA
                       </label>
                       <input
@@ -317,13 +316,13 @@ export function RightDossierDrawer({
                         onChange={(e) =>
                           onUpdateBoardMeta({ title: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 text-[13px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D] focus:outline-none focus:border-[#1B4DFF]"
+                        className="w-full px-2.5 py-1.5 text-[13.5px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)] focus:outline-none focus:border-[#3B66FF]"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                        <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                           CLIENTE
                         </label>
                         <input
@@ -333,11 +332,11 @@ export function RightDossierDrawer({
                           onChange={(e) =>
                             onUpdateBoardMeta({ clientName: e.target.value })
                           }
-                          className="w-full px-2.5 py-1.5 text-[12.5px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D] focus:outline-none focus:border-[#1B4DFF]"
+                          className="w-full px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)] focus:outline-none focus:border-[#3B66FF]"
                         />
                       </div>
                       <div>
-                        <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                        <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                           TIPO DE PRODUTO
                         </label>
                         <input
@@ -347,13 +346,13 @@ export function RightDossierDrawer({
                           onChange={(e) =>
                             onUpdateBoardMeta({ systemType: e.target.value })
                           }
-                          className="w-full px-2.5 py-1.5 text-[12.5px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D] focus:outline-none focus:border-[#1B4DFF]"
+                          className="w-full px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)] focus:outline-none focus:border-[#3B66FF]"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                      <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                         OBJETIVO CENTRAL DA JORNADA
                       </label>
                       <textarea
@@ -363,7 +362,7 @@ export function RightDossierDrawer({
                         onChange={(e) =>
                           onUpdateBoardMeta({ objective: e.target.value })
                         }
-                        className="w-full px-2.5 py-1.5 text-[12.5px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D] focus:outline-none focus:border-[#1B4DFF]"
+                        className="w-full px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)] focus:outline-none focus:border-[#3B66FF]"
                       />
                     </div>
                   </div>
@@ -371,12 +370,12 @@ export function RightDossierDrawer({
 
                 {/* Export by Phase Shortcut Card */}
                 {sectionNodes.length > 0 && (
-                  <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-2.5">
-                    <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#1B4DFF]" />
+                  <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] space-y-2.5">
+                    <h3 className="text-[13.5px] font-bold text-[var(--ink-primary)] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#3B66FF]" />
                       Exportar Fase para IA (.MD)
                     </h3>
-                    <p className="text-[12px] text-[#4A4D55]">
+                    <p className="text-[12px] text-[var(--ink-secondary)]">
                       Gere o arquivo `.md` apenas com as telas, fluxos e regras de uma Fase específica para pedir à IA que construa um módulo por vez:
                     </p>
                     <div className="space-y-1.5">
@@ -385,16 +384,16 @@ export function RightDossierDrawer({
                         return (
                           <div
                             key={sec.id}
-                            className="p-2.5 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[8px] space-y-2"
+                            className="p-2.5 bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[8px] space-y-2"
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-[10.5px] font-bold px-1.5 py-0.5 bg-[#16181D] text-[#FAF8F4] rounded-[3px]">
+                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[3px]">
                                 {sec.data.code}
                               </span>
-                              <span className="text-[12px] font-semibold text-[#16181D] flex-1 truncate">
+                              <span className="text-[12px] font-semibold text-[var(--ink-primary)] flex-1 truncate">
                                 {sec.data.title}
                               </span>
-                              <span className="font-mono text-[10px] text-[#4A4D55] shrink-0">
+                              <span className="font-mono text-[10px] text-[var(--ink-secondary)] shrink-0">
                                 {itemsInPhase.length} bloco(s)
                               </span>
                             </div>
@@ -408,7 +407,7 @@ export function RightDossierDrawer({
                                   );
                                   triggerCopy(`phase-${sec.id}`, md);
                                 }}
-                                className="py-1.5 px-2 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                                className="py-1.5 px-2 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] font-mono text-[10px] font-semibold flex items-center justify-center gap-1"
                               >
                                 {copiedKey === `phase-${sec.id}` ? (
                                   <>
@@ -434,7 +433,7 @@ export function RightDossierDrawer({
                                   ).toLowerCase()}`;
                                   handleDownloadFile("md", md, slug);
                                 }}
-                                className="py-1.5 px-2 bg-[#FAF8F4] hover:bg-[#EFECE4] text-[#16181D] border border-[#16181D] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                                className="py-1.5 px-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-strong)] rounded-[6px] font-mono text-[10px] font-semibold flex items-center justify-center gap-1"
                               >
                                 <Download className="w-3 h-3" />
                                 Baixar .MD
@@ -448,14 +447,14 @@ export function RightDossierDrawer({
                 )}
 
                 {/* Quick Inventory List */}
-                <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-2.5">
+                <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[12px] space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-[#1B4DFF]" />
+                    <h3 className="text-[13.5px] font-bold text-[var(--ink-primary)] flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#3B66FF]" />
                       Índice de Blocos no Canvas ({board.nodes.length})
                     </h3>
                   </div>
-                  <div className="max-h-[220px] overflow-y-auto divide-y divide-[#D8D3C8] border border-[#D8D3C8] rounded-[8px] bg-[#F6F3EC]">
+                  <div className="max-h-[220px] overflow-y-auto divide-y divide-[var(--rule-hairline)] border border-[var(--rule-hairline)] rounded-[8px] bg-[var(--bg-subcard)]">
                     {board.nodes
                       .filter((n) => n.data.category !== "section")
                       .map((node) => (
@@ -463,17 +462,17 @@ export function RightDossierDrawer({
                           key={node.id}
                           type="button"
                           onClick={() => onSelectNodeById(node.id)}
-                          className="w-full px-2.5 py-2 text-left flex items-center justify-between hover:bg-[#EFECE4] transition-colors"
+                          className="w-full px-2.5 py-2 text-left flex items-center justify-between hover:bg-[var(--bg-hover)] transition-colors"
                         >
                           <div className="flex items-center gap-2 truncate">
-                            <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 bg-[#16181D] text-[#FAF8F4] rounded-[3px] shrink-0 tabular-nums">
+                            <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[3px] shrink-0 tabular-nums">
                               {node.data.code}
                             </span>
-                            <span className="text-[12px] font-medium text-[#16181D] truncate">
+                            <span className="text-[12px] font-medium text-[var(--ink-primary)] truncate">
                               {node.data.title}
                             </span>
                           </div>
-                          <span className="font-mono text-[10px] text-[#4A4D55] uppercase shrink-0 ml-2">
+                          <span className="font-mono text-[10px] text-[var(--ink-secondary)] uppercase shrink-0 ml-2">
                             {node.data.category}
                           </span>
                         </button>
@@ -484,13 +483,13 @@ export function RightDossierDrawer({
             ) : (
               <div className="space-y-4">
                 {/* Node Header */}
-                <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#D8D3C8] pb-2.5">
+                <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] space-y-3">
+                  <div className="flex items-center justify-between border-b border-[var(--rule-hairline)] pb-2.5">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[4px] tabular-nums">
                         {selectedNode.data.code}
                       </span>
-                      <h2 className="text-[13.5px] font-bold text-[#16181D] uppercase">
+                      <h2 className="text-[13.5px] font-bold text-[var(--ink-primary)] uppercase">
                         Bloco · {selectedNode.data.category}
                       </h2>
                     </div>
@@ -501,7 +500,7 @@ export function RightDossierDrawer({
                           type="button"
                           title="Duplicar Bloco"
                           onClick={() => onDuplicateNode(selectedNode.id)}
-                          className="p-1.5 text-[#16181D] hover:bg-[#EFECE4] rounded-[6px] border border-[#D8D3C8]"
+                          className="p-1.5 text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] rounded-[6px] border border-[var(--rule-hairline)]"
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
@@ -509,7 +508,7 @@ export function RightDossierDrawer({
                           type="button"
                           title="Excluir Bloco"
                           onClick={() => onDeleteNode(selectedNode.id)}
-                          className="p-1.5 text-[#D9381E] hover:bg-[#FEF0EE] rounded-[6px] border border-[#F5B8B4]"
+                          className="p-1.5 text-[#E54D2E] hover:bg-[#D9381E]/20 rounded-[6px] border border-[#D9381E]/40"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -520,7 +519,7 @@ export function RightDossierDrawer({
                   {/* Title & Subtitle */}
                   <div className="space-y-2.5">
                     <div>
-                      <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                      <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                         TÍTULO DA ETAPA / TELA
                       </label>
                       <input
@@ -532,12 +531,12 @@ export function RightDossierDrawer({
                             title: e.target.value,
                           })
                         }
-                        className="w-full px-2.5 py-1.5 text-[13px] font-medium bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D] focus:outline-none focus:border-[#1B4DFF]"
+                        className="w-full px-2.5 py-1.5 text-[13.5px] font-medium bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)] focus:outline-none focus:border-[#3B66FF]"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                      <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                         DESCRIÇÃO / CONTEXTO DO BRIEFING
                       </label>
                       <textarea
@@ -556,7 +555,7 @@ export function RightDossierDrawer({
                               : { subtitle: e.target.value }
                           )
                         }
-                        className="w-full px-2.5 py-1.5 text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D] focus:outline-none focus:border-[#1B4DFF]"
+                        className="w-full px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)] focus:outline-none focus:border-[#3B66FF]"
                       />
                     </div>
 
@@ -564,7 +563,7 @@ export function RightDossierDrawer({
                     {selectedNode.data.category !== "section" && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                          <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                             ATOR / PERSONA
                           </label>
                           <input
@@ -577,12 +576,12 @@ export function RightDossierDrawer({
                                 actor: e.target.value,
                               })
                             }
-                            className="w-full px-2 py-1.5 text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D]"
+                            className="w-full px-2 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                           />
                         </div>
 
                         <div>
-                          <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                          <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                             PRIORIDADE ESCOPO
                           </label>
                           <select
@@ -593,7 +592,7 @@ export function RightDossierDrawer({
                                 priority: e.target.value as PriorityLevel,
                               })
                             }
-                            className="w-full px-2 py-1.5 text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D]"
+                            className="w-full px-2 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                           >
                             <option value="mvp">MVP (Fase 1)</option>
                             <option value="fase2">Fase 2</option>
@@ -607,8 +606,8 @@ export function RightDossierDrawer({
                     {/* Status de Validação */}
                     {selectedNode.data.category !== "section" && (
                       <div>
-                        <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
-                           STATUS NA REUNIÃO
+                        <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
+                          STATUS NA REUNIÃO
                         </label>
                         <div className="grid grid-cols-3 gap-1.5">
                           {(["rascunho", "validado", "duvida"] as const).map(
@@ -621,10 +620,10 @@ export function RightDossierDrawer({
                                     status: st,
                                   })
                                 }
-                                className={`py-1.5 px-2 rounded-[6px] font-mono text-[10.5px] uppercase border transition-colors ${
+                                className={`py-1.5 px-2 rounded-[6px] font-mono text-[10px] uppercase border transition-colors ${
                                   selectedNode.data.status === st
-                                    ? "bg-[#16181D] text-[#FAF8F4] border-[#16181D] font-semibold"
-                                    : "bg-[#F6F3EC] text-[#4A4D55] border-[#D8D3C8] hover:bg-[#EFECE4]"
+                                    ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                                    : "bg-[var(--bg-subcard)] text-[var(--ink-secondary)] border-[var(--rule-hairline)] hover:bg-[var(--bg-hover)]"
                                 }`}
                               >
                                 {st === "validado"
@@ -642,7 +641,7 @@ export function RightDossierDrawer({
                     {/* Route for screen */}
                     {selectedNode.data.category === "screen" && (
                       <div>
-                        <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                        <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                           ROTA / URL DA TELA
                         </label>
                         <input
@@ -655,7 +654,7 @@ export function RightDossierDrawer({
                               route: e.target.value,
                             })
                           }
-                          className="w-full px-2.5 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D]"
+                          className="w-full px-2.5 py-1.5 font-mono text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                         />
                       </div>
                     )}
@@ -664,7 +663,7 @@ export function RightDossierDrawer({
                     {selectedNode.data.category === "integration" && (
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                          <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                             TIPO
                           </label>
                           <select
@@ -676,7 +675,7 @@ export function RightDossierDrawer({
                                   .value as FlowNodeData["method"],
                               })
                             }
-                            className="w-full px-2 py-1.5 font-mono text-[11px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                            className="w-full px-2 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                           >
                             <option value="WEBHOOK">WEBHOOK</option>
                             <option value="POST">POST</option>
@@ -686,7 +685,7 @@ export function RightDossierDrawer({
                           </select>
                         </div>
                         <div className="col-span-2">
-                          <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                          <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                             ENDPOINT / SERVIÇO
                           </label>
                           <input
@@ -698,7 +697,7 @@ export function RightDossierDrawer({
                                 endpoint: e.target.value,
                               })
                             }
-                            className="w-full px-2 py-1.5 font-mono text-[11.5px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                            className="w-full px-2 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                           />
                         </div>
                       </div>
@@ -707,7 +706,7 @@ export function RightDossierDrawer({
                     {/* Database table name */}
                     {selectedNode.data.category === "database" && (
                       <div>
-                        <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                        <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                           NOME DA TABELA NO BANCO
                         </label>
                         <input
@@ -719,7 +718,7 @@ export function RightDossierDrawer({
                               tableName: e.target.value,
                             })
                           }
-                          className="w-full px-2.5 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                          className="w-full px-2.5 py-1.5 font-mono text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                         />
                       </div>
                     )}
@@ -727,7 +726,7 @@ export function RightDossierDrawer({
                     {/* Sticky Note Color */}
                     {selectedNode.data.category === "sticky" && (
                       <div>
-                        <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                        <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                           COR DO POST-IT
                         </label>
                         <div className="grid grid-cols-4 gap-2">
@@ -750,7 +749,7 @@ export function RightDossierDrawer({
                               style={{ backgroundColor: col.bg }}
                               className={`py-1.5 px-2 rounded-[6px] text-[11px] font-semibold text-[#16181D] border ${
                                 selectedNode.data.stickyColor === col.id
-                                  ? "border-[#16181D] ring-2 ring-[#16181D]/30"
+                                  ? "border-[#16181D] ring-2 ring-[#3B66FF]"
                                   : "border-black/20"
                               }`}
                             >
@@ -766,7 +765,7 @@ export function RightDossierDrawer({
                       <div className="space-y-3 pt-1">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                            <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                               LARGURA (PX)
                             </label>
                             <input
@@ -778,11 +777,11 @@ export function RightDossierDrawer({
                                   sectionWidth: Number(e.target.value) || 580,
                                 })
                               }
-                              className="w-full px-2 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                              className="w-full px-2 py-1.5 font-mono text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                             />
                           </div>
                           <div>
-                            <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                            <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                               ALTURA (PX)
                             </label>
                             <input
@@ -794,14 +793,14 @@ export function RightDossierDrawer({
                                   sectionHeight: Number(e.target.value) || 560,
                                 })
                               }
-                              className="w-full px-2 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                              className="w-full px-2 py-1.5 font-mono text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                             />
                           </div>
                         </div>
 
                         {/* Phase Export Card inside Section Inspector */}
-                        <div className="p-3 bg-[#F6F3EC] border border-[#16181D] rounded-[8px] space-y-2">
-                          <p className="text-[12px] font-bold text-[#16181D]">
+                        <div className="p-3 bg-[var(--bg-subcard)] border border-[var(--rule-strong)] rounded-[8px] space-y-2">
+                          <p className="text-[12px] font-bold text-[var(--ink-primary)]">
                             Itens dentro desta Fase (
                             {getNodesInSection(board.nodes, selectedNode).length}
                             )
@@ -811,12 +810,12 @@ export function RightDossierDrawer({
                               (child) => (
                                 <div
                                   key={child.id}
-                                  className="px-2 py-1 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[4px] flex items-center justify-between text-[11px]"
+                                  className="px-2 py-1 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[4px] flex items-center justify-between text-[11px]"
                                 >
-                                  <span className="font-mono font-semibold text-[#1B4DFF]">
+                                  <span className="font-mono font-semibold text-[#3B66FF]">
                                     {child.data.code}
                                   </span>
-                                  <span className="truncate ml-2 flex-1 text-[#16181D]">
+                                  <span className="truncate ml-2 flex-1 text-[var(--ink-primary)]">
                                     {child.data.title}
                                   </span>
                                 </div>
@@ -833,7 +832,7 @@ export function RightDossierDrawer({
                                 );
                                 triggerCopy("phase-insp", md);
                               }}
-                              className="py-1.5 px-2 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                              className="py-1.5 px-2 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] font-mono text-[10px] font-semibold flex items-center justify-center gap-1"
                             >
                               {copiedKey === "phase-insp" ? (
                                 <>
@@ -862,7 +861,7 @@ export function RightDossierDrawer({
                                   ).toLowerCase()}`
                                 );
                               }}
-                              className="py-1.5 px-2 bg-[#16181D] text-[#FAF8F4] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                              className="py-1.5 px-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-strong)] rounded-[6px] font-mono text-[10px] font-semibold flex items-center justify-center gap-1"
                             >
                               <Download className="w-3 h-3" />
                               Baixar .MD
@@ -877,8 +876,8 @@ export function RightDossierDrawer({
                 {/* Screen Fields / Database Columns Editor */}
                 {(selectedNode.data.category === "screen" ||
                   selectedNode.data.category === "database") && (
-                  <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-2.5">
-                    <h3 className="text-[13.5px] font-bold text-[#16181D]">
+                  <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[12px] space-y-2.5">
+                    <h3 className="text-[13.5px] font-bold text-[var(--ink-primary)]">
                       {selectedNode.data.category === "screen"
                         ? "Componentes & Campos da Tela"
                         : "Colunas da Tabela"}
@@ -888,13 +887,13 @@ export function RightDossierDrawer({
                       {(selectedNode.data.fields || []).map((f) => (
                         <div
                           key={f.id}
-                          className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[12px]"
+                          className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[12px]"
                         >
                           <div className="flex items-center gap-2 truncate">
-                            <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 bg-[#EFECE4] border border-[#D8D3C8] rounded-[3px] text-[#4A4D55]">
+                            <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 bg-[var(--bg-panel)] border border-[var(--rule-hairline)] rounded-[3px] text-[var(--ink-secondary)]">
                               {f.kind}
                             </span>
-                            <span className="truncate font-medium text-[#16181D]">
+                            <span className="truncate font-medium text-[var(--ink-primary)]">
                               {f.label}
                             </span>
                           </div>
@@ -902,7 +901,7 @@ export function RightDossierDrawer({
                             <button
                               type="button"
                               onClick={() => handleRemoveField(f.id)}
-                              className="text-[#4A4D55] hover:text-[#D9381E]"
+                              className="text-[var(--ink-secondary)] hover:text-[#E54D2E]"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -920,7 +919,7 @@ export function RightDossierDrawer({
                               e.target.value as ScreenField["kind"]
                             )
                           }
-                          className="px-2 py-1.5 font-mono text-[11px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                          className="px-2 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                         >
                           <option value="input">Input</option>
                           <option value="select">Filtro/Select</option>
@@ -938,7 +937,7 @@ export function RightDossierDrawer({
                           onKeyDown={(e) =>
                             e.key === "Enter" && handleAddField()
                           }
-                          className="flex-1 px-2.5 py-1.5 text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                          className="flex-1 px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                         />
                         <button
                           type="button"
@@ -955,8 +954,8 @@ export function RightDossierDrawer({
                 {/* Business Rules Editor */}
                 {selectedNode.data.category !== "section" &&
                   selectedNode.data.category !== "sticky" && (
-                    <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-2.5">
-                      <h3 className="text-[13.5px] font-bold text-[#16181D]">
+                    <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[12px] space-y-2.5">
+                      <h3 className="text-[13.5px] font-bold text-[var(--ink-primary)]">
                         Regras de Negócio & Critérios de Aceite
                       </h3>
 
@@ -965,16 +964,16 @@ export function RightDossierDrawer({
                           (rule, idx) => (
                             <div
                               key={idx}
-                              className="flex items-start justify-between gap-2 px-2.5 py-1.5 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[12px]"
+                              className="flex items-start justify-between gap-2 px-2.5 py-1.5 bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[12px]"
                             >
-                              <span className="text-[#16181D] leading-snug">
+                              <span className="text-[var(--ink-primary)] leading-snug">
                                 • {rule}
                               </span>
                               {!isClientMode && (
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveRule(idx)}
-                                  className="text-[#4A4D55] hover:text-[#D9381E] shrink-0 mt-0.5"
+                                  className="text-[var(--ink-secondary)] hover:text-[#E54D2E] shrink-0 mt-0.5"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -994,12 +993,12 @@ export function RightDossierDrawer({
                             onKeyDown={(e) =>
                               e.key === "Enter" && handleAddRule()
                             }
-                            className="flex-1 px-2.5 py-1.5 text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                            className="flex-1 px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                           />
                           <button
                             type="button"
                             onClick={handleAddRule}
-                            className="px-2.5 py-1.5 bg-[#16181D] text-[#FAF8F4] rounded-[6px]"
+                            className="px-2.5 py-1.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[6px]"
                           >
                             <Plus className="w-4 h-4" />
                           </button>
@@ -1015,25 +1014,25 @@ export function RightDossierDrawer({
         {/* TAB 2: PRD & SCOPE COMPILER (WITH PHASE FILTER) */}
         {activeTab === "prd" && (
           <div className="space-y-3">
-            <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
+            <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-[14px] font-bold text-[#16181D]">
+                <h2 className="text-[14px] font-bold text-[var(--ink-primary)]">
                   Compilador de Escopo & Prompt IA
                 </h2>
-                <span className="font-mono text-[10px] px-2 py-0.5 bg-[#E8EEFF] text-[#1438B8] border border-[#B8CAFF] rounded-[4px] font-semibold">
+                <span className="font-mono text-[10px] px-2 py-0.5 bg-[#1B4DFF]/20 text-[#60A5FA] border border-[#3B66FF]/40 rounded-[4px] font-semibold">
                   AO VIVO
                 </span>
               </div>
 
               {/* Phase Scope Selector */}
               <div>
-                <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                   RECORTAR ESCOPO POR FASE (OU PROJETO COMPLETO)
                 </label>
                 <select
                   value={selectedPhaseId}
                   onChange={(e) => setSelectedPhaseId(e.target.value)}
-                  className="w-full px-2.5 py-1.5 font-mono text-[11px] bg-[#F6F3EC] border border-[#16181D] rounded-[6px] text-[#16181D]"
+                  className="w-full px-2.5 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-strong)] rounded-[6px] text-[var(--ink-primary)]"
                 >
                   <option value="all">
                     ★ Projeto Completo ({board.nodes.length} blocos)
@@ -1057,8 +1056,8 @@ export function RightDossierDrawer({
                     onClick={() => setPrdFormat("prd")}
                     className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
                       prdFormat === "prd"
-                        ? "bg-[#16181D] text-[#FAF8F4] border-[#16181D] font-semibold"
-                        : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
+                        ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                        : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
                     }`}
                   >
                     PRD Markdown
@@ -1069,7 +1068,7 @@ export function RightDossierDrawer({
                     className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border flex items-center justify-center gap-1 ${
                       prdFormat === "prompt"
                         ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
-                        : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
+                        : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
                     }`}
                   >
                     <Sparkles className="w-3 h-3" />
@@ -1080,8 +1079,8 @@ export function RightDossierDrawer({
                     onClick={() => setPrdFormat("json")}
                     className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
                       prdFormat === "json"
-                        ? "bg-[#16181D] text-[#FAF8F4] border-[#16181D] font-semibold"
-                        : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
+                        ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                        : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
                     }`}
                   >
                     JSON Grafo
@@ -1127,7 +1126,7 @@ export function RightDossierDrawer({
                       fname
                     );
                   }}
-                  className="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-[#FAF8F4] hover:bg-[#EFECE4] text-[#16181D] border border-[#16181D] text-[12px] font-semibold rounded-[8px]"
+                  className="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-[var(--bg-subcard)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-strong)] text-[12px] font-semibold rounded-[8px]"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Baixar .
@@ -1139,8 +1138,8 @@ export function RightDossierDrawer({
             </div>
 
             {/* Live Preview Box */}
-            <div className="p-3 bg-[#16181D] text-[#F6F3EC] rounded-[12px] border border-[#16181D]">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/15 font-mono text-[10.5px] text-[#A0A4B0]">
+            <div className="p-3 bg-[#111318] text-[#F3F1EA] rounded-[12px] border border-[var(--rule-strong)]">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/15 font-mono text-[10px] text-[#9CA4B4]">
                 <span>
                   PREVIEW ·{" "}
                   {selectedPhaseId === "all"
@@ -1159,11 +1158,11 @@ export function RightDossierDrawer({
         {/* TAB 3: CLIENT COMMENTS & NOTES */}
         {activeTab === "comments" && (
           <div className="space-y-4">
-            <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-2.5">
-              <h2 className="text-[14px] font-bold text-[#16181D]">
+            <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] space-y-2.5">
+              <h2 className="text-[14px] font-bold text-[var(--ink-primary)]">
                 Adicionar Comentário ou Dúvida do Cliente
               </h2>
-              <p className="text-[12px] text-[#4A4D55]">
+              <p className="text-[12px] text-[var(--ink-secondary)]">
                 {selectedNode
                   ? `Vinculado ao bloco selecionado: [${selectedNode.data.code}] ${selectedNode.data.title}`
                   : "Selecione um bloco no canvas para vincular ou registre na tela principal."}
@@ -1174,30 +1173,30 @@ export function RightDossierDrawer({
                 placeholder="Seu nome (ex: Ricardo - Cliente)"
                 value={commentAuthor}
                 onChange={(e) => setCommentAuthor(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                className="w-full px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
               />
               <textarea
                 rows={3}
                 placeholder="Digite o feedback, ajuste de escopo ou dúvida levantada na reunião..."
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                className="w-full px-2.5 py-1.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
               />
               <button
                 type="button"
                 onClick={handleAddComment}
-                className="w-full py-2 px-3 bg-[#16181D] hover:bg-[#2B2E36] text-[#FAF8F4] text-[12px] font-semibold rounded-[8px] transition-colors"
+                className="w-full py-2 px-3 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold rounded-[8px] transition-colors"
               >
                 Registrar Comentário no Bloco
               </button>
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-[13.5px] font-bold text-[#16181D]">
+              <h3 className="text-[13.5px] font-bold text-[var(--ink-primary)]">
                 Histórico de Revisão ({allComments.length})
               </h3>
               {allComments.length === 0 ? (
-                <div className="p-4 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] text-center text-[12px] text-[#4A4D55]">
+                <div className="p-4 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[12px] text-center text-[12px] text-[var(--ink-secondary)]">
                   Nenhum comentário pendente neste fluxograma.
                 </div>
               ) : (
@@ -1206,8 +1205,8 @@ export function RightDossierDrawer({
                     key={item.id}
                     className={`p-3 rounded-[10px] border space-y-1.5 ${
                       item.resolved
-                        ? "bg-[#F6F3EC] border-[#D8D3C8] opacity-70"
-                        : "bg-[#FAF8F4] border-[#16181D]"
+                        ? "bg-[var(--bg-subcard)] border-[var(--rule-hairline)] opacity-70"
+                        : "bg-[var(--bg-card)] border-[var(--rule-strong)]"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -1225,17 +1224,17 @@ export function RightDossierDrawer({
                         }
                         className={`font-mono text-[10px] px-1.5 py-0.5 rounded-[4px] border ${
                           item.resolved
-                            ? "bg-[#E6F4F1] text-[#0F766E] border-[#A7DCD2]"
-                            : "bg-[#FEF0EE] text-[#D9381E] border-[#F5B8B4]"
+                            ? "bg-[#0F766E]/20 text-[#2DD4BF] border-[#0F766E]"
+                            : "bg-[#D9381E]/20 text-[#F87171] border-[#D9381E]"
                         }`}
                       >
                         {item.resolved ? "✓ Resolvido" : "Marcar Resolvido"}
                       </button>
                     </div>
-                    <p className="text-[12px] text-[#16181D] leading-relaxed">
+                    <p className="text-[12px] text-[var(--ink-primary)] leading-relaxed">
                       &ldquo;{item.text}&rdquo;
                     </p>
-                    <div className="flex items-center justify-between font-mono text-[10px] text-[#4A4D55]">
+                    <div className="flex items-center justify-between font-mono text-[10px] text-[var(--ink-secondary)]">
                       <span>{item.author}</span>
                       <span>{item.createdAt}</span>
                     </div>
@@ -1250,15 +1249,15 @@ export function RightDossierDrawer({
         {activeTab === "cloud" && (
           <div className="space-y-4">
             {/* Saved Projects Gallery Card */}
-            <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
+            <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-[14px] font-bold text-[#16181D] flex items-center gap-1.5">
-                  <FolderOpen className="w-4 h-4 text-[#1B4DFF]" />
+                <h2 className="text-[14px] font-bold text-[var(--ink-primary)] flex items-center gap-1.5">
+                  <FolderOpen className="w-4 h-4 text-[#3B66FF]" />
                   Meus Projetos Salvos ({savedBoards.length})
                 </h2>
               </div>
 
-              <p className="text-[12px] text-[#4A4D55] leading-relaxed">
+              <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
                 Seus projetos são salvos em <strong>3 lugares</strong>: em tempo real no navegador (<code>localStorage</code>), no disco do servidor (<code>.data/boards.json</code>) e na nuvem Supabase (<code>{SUPABASE_PROJECT_REF}</code>).
               </p>
 
@@ -1275,35 +1274,37 @@ export function RightDossierDrawer({
                 <button
                   type="button"
                   onClick={onSaveAsNewProject}
-                  className="py-2 px-2.5 bg-[#16181D] hover:bg-[#1B4DFF] text-[#FAF8F4] text-[12px] font-semibold rounded-[8px] flex items-center justify-center gap-1.5 transition-colors"
+                  className="py-2 px-2.5 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold rounded-[8px] flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <FilePlus2 className="w-3.5 h-3.5" />
                   <span>Salvar Novo</span>
                 </button>
               </div>
 
-              <div className="max-h-[210px] overflow-y-auto divide-y divide-[#D8D3C8] border border-[#D8D3C8] rounded-[8px] bg-[#F6F3EC]">
+              <div className="max-h-[210px] overflow-y-auto divide-y divide-[var(--rule-hairline)] border border-[var(--rule-hairline)] rounded-[8px] bg-[var(--bg-subcard)]">
                 {savedBoards.map((item) => {
                   const isCurrent = item.id === board.id;
                   return (
                     <div
                       key={item.id}
                       className={`p-2.5 flex items-center justify-between gap-2 ${
-                        isCurrent ? "bg-[#E8EEFF]/60" : "hover:bg-[#EFECE4]"
+                        isCurrent
+                          ? "bg-[#1B4DFF]/15"
+                          : "hover:bg-[var(--bg-hover)]"
                       }`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[12px] font-bold text-[#16181D] truncate">
+                          <span className="text-[12px] font-bold text-[var(--ink-primary)] truncate">
                             {item.title}
                           </span>
                           {isCurrent && (
-                            <span className="font-mono text-[9.5px] px-1.5 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[3px] shrink-0">
+                            <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[3px] shrink-0">
                               ABERTO
                             </span>
                           )}
                         </div>
-                        <p className="font-mono text-[10px] text-[#4A4D55] truncate">
+                        <p className="font-mono text-[10px] text-[var(--ink-secondary)] truncate">
                           Cliente: {item.clientName} · {item.nodes?.length || 0}{" "}
                           blocos
                         </p>
@@ -1311,7 +1312,7 @@ export function RightDossierDrawer({
                       <button
                         type="button"
                         onClick={() => onLoadProject(item)}
-                        className="px-2.5 py-1 bg-[#FAF8F4] hover:bg-[#16181D] text-[#16181D] hover:text-[#FAF8F4] border border-[#16181D] rounded-[6px] font-mono text-[10.5px] font-semibold shrink-0 transition-colors"
+                        className="px-2.5 py-1 bg-[var(--bg-card)] hover:bg-[#1B4DFF] text-[var(--ink-primary)] hover:text-[#FAF8F4] border border-[var(--rule-strong)] rounded-[6px] font-mono text-[10px] font-semibold shrink-0 transition-colors"
                       >
                         Abrir
                       </button>
@@ -1322,15 +1323,15 @@ export function RightDossierDrawer({
             </div>
 
             {/* Share Links Card */}
-            <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
-              <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
-                <Share2 className="w-4 h-4 text-[#1B4DFF]" />
+            <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] space-y-3">
+              <h3 className="text-[13.5px] font-bold text-[var(--ink-primary)] flex items-center gap-1.5">
+                <Share2 className="w-4 h-4 text-[#3B66FF]" />
                 Links de Acesso & Compartilhamento
               </h3>
 
               <div className="space-y-2">
                 <div>
-                  <label className="block font-mono text-[10px] text-[#4A4D55] mb-1">
+                  <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                     LINK MODO CLIENTE (LEITURA + COMENTÁRIOS)
                   </label>
                   <div className="flex gap-1.5">
@@ -1338,12 +1339,12 @@ export function RightDossierDrawer({
                       type="text"
                       readOnly
                       value={shareUrlClient}
-                      className="flex-1 px-2 py-1.5 font-mono text-[11px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D]"
+                      className="flex-1 px-2 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                     />
                     <button
                       type="button"
                       onClick={() => triggerCopy("clientLink", shareUrlClient)}
-                      className="px-2.5 py-1.5 bg-[#16181D] text-[#FAF8F4] font-mono text-[11px] rounded-[6px]"
+                      className="px-2.5 py-1.5 bg-[#1B4DFF] text-[#FAF8F4] font-mono text-[11px] rounded-[6px]"
                     >
                       {copiedKey === "clientLink" ? "Copiado" : "Copiar"}
                     </button>
@@ -1351,7 +1352,7 @@ export function RightDossierDrawer({
                 </div>
 
                 <div>
-                  <label className="block font-mono text-[10px] text-[#4A4D55] mb-1">
+                  <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                     LINK DIRETO PARA ABRIR ESTE PROJETO DEPOIS
                   </label>
                   <div className="flex gap-1.5">
@@ -1359,12 +1360,12 @@ export function RightDossierDrawer({
                       type="text"
                       readOnly
                       value={shareUrlFull}
-                      className="flex-1 px-2 py-1.5 font-mono text-[11px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[#16181D]"
+                      className="flex-1 px-2 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                     />
                     <button
                       type="button"
                       onClick={() => triggerCopy("fullLink", shareUrlFull)}
-                      className="px-2.5 py-1.5 bg-[#EFECE4] border border-[#16181D] text-[#16181D] font-mono text-[11px] rounded-[6px]"
+                      className="px-2.5 py-1.5 bg-[var(--bg-subcard)] border border-[var(--rule-strong)] text-[var(--ink-primary)] font-mono text-[11px] rounded-[6px]"
                     >
                       {copiedKey === "fullLink" ? "Copiado" : "Copiar"}
                     </button>
@@ -1374,17 +1375,17 @@ export function RightDossierDrawer({
             </div>
 
             {/* Supabase Project Connection Card */}
-            <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-3">
+            <div className="p-3.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[12px] space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-[#0F766E]" />
+                <h3 className="text-[13.5px] font-bold text-[var(--ink-primary)] flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-[#149E93]" />
                   Supabase ({SUPABASE_PROJECT_REF})
                 </h3>
                 <span
                   className={`font-mono text-[10px] px-1.5 py-0.5 rounded-[4px] border ${
                     syncStatus === "supabase"
-                      ? "bg-[#E6F4F1] text-[#0F766E] border-[#A7DCD2]"
-                      : "bg-[#EFECE4] text-[#4A4D55] border-[#D8D3C8]"
+                      ? "bg-[#0F766E]/20 text-[#2DD4BF] border-[#0F766E]"
+                      : "bg-[var(--bg-subcard)] text-[var(--ink-secondary)] border-[var(--rule-hairline)]"
                   }`}
                 >
                   {syncStatus === "supabase"
@@ -1394,7 +1395,7 @@ export function RightDossierDrawer({
               </div>
 
               <div>
-                <label className="block font-mono text-[10px] text-[#4A4D55] mb-1">
+                <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
                   SUPABASE ANON PUBLIC KEY (OPCIONAL EM TELA OU .ENV.LOCAL)
                 </label>
                 <input
@@ -1402,12 +1403,12 @@ export function RightDossierDrawer({
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   value={anonKey}
                   onChange={(e) => setAnonKey(e.target.value)}
-                  className="w-full px-2.5 py-1.5 font-mono text-[11px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                  className="w-full px-2.5 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
                 />
               </div>
 
               {supabaseError && (
-                <div className="p-2 bg-[#FEF0EE] border border-[#F5B8B4] rounded-[6px] text-[11px] text-[#B42318]">
+                <div className="p-2 bg-[#D9381E]/20 border border-[#D9381E] rounded-[6px] text-[11px] text-[#F87171]">
                   Aviso Supabase: {supabaseError}
                 </div>
               )}
@@ -1417,7 +1418,7 @@ export function RightDossierDrawer({
                   href={SUPABASE_API_SETTINGS_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#F6F3EC] hover:bg-[#EFECE4] border border-[#D8D3C8] rounded-[6px] text-[11px] font-medium text-[#16181D]"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg-subcard)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] rounded-[6px] text-[11px] font-medium text-[var(--ink-primary)]"
                 >
                   Pegar Anon Key
                   <ExternalLink className="w-3 h-3" />
@@ -1426,7 +1427,7 @@ export function RightDossierDrawer({
                   href={SUPABASE_SQL_EDITOR_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#F6F3EC] hover:bg-[#EFECE4] border border-[#D8D3C8] rounded-[6px] text-[11px] font-medium text-[#16181D]"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg-subcard)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] rounded-[6px] text-[11px] font-medium text-[var(--ink-primary)]"
                 >
                   Abrir SQL Editor
                   <ExternalLink className="w-3 h-3" />
@@ -1434,7 +1435,7 @@ export function RightDossierDrawer({
                 <button
                   type="button"
                   onClick={() => triggerCopy("sql", SUPABASE_MIGRATION_SQL)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#16181D] text-[#FAF8F4] rounded-[6px] text-[11px] font-medium"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[6px] text-[11px] font-medium"
                 >
                   {copiedKey === "sql" ? "SQL Copiado!" : "Copiar SQL da Tabela"}
                 </button>

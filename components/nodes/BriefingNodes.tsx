@@ -38,9 +38,9 @@ const PRIORITY_BADGE: Record<
   },
   fase2: {
     label: "FASE 2",
-    bg: "#F3EFE6",
-    text: "#4A4D55",
-    border: "#D8D3C8",
+    bg: "#262B36",
+    text: "#F3F1EA",
+    border: "#3E465A",
   },
   desejavel: {
     label: "DESEJÁVEL",
@@ -59,20 +59,20 @@ const PRIORITY_BADGE: Record<
 function FieldIcon({ kind }: { kind: ScreenField["kind"] }) {
   switch (kind) {
     case "input":
-      return <FormInput className="w-3 h-3 shrink-0 text-[#4A4D55]" />;
+      return <FormInput className="w-3 h-3 shrink-0 text-[var(--ink-secondary)]" />;
     case "select":
-      return <ListFilter className="w-3 h-3 shrink-0 text-[#4A4D55]" />;
+      return <ListFilter className="w-3 h-3 shrink-0 text-[var(--ink-secondary)]" />;
     case "table":
-      return <Table2 className="w-3 h-3 shrink-0 text-[#1B4DFF]" />;
+      return <Table2 className="w-3 h-3 shrink-0 text-[#3B66FF]" />;
     case "kpi":
     case "chart":
-      return <BarChart3 className="w-3 h-3 shrink-0 text-[#0F766E]" />;
+      return <BarChart3 className="w-3 h-3 shrink-0 text-[#149E93]" />;
     case "upload":
-      return <Upload className="w-3 h-3 shrink-0 text-[#6D28D9]" />;
+      return <Upload className="w-3 h-3 shrink-0 text-[#8B5CF6]" />;
     case "button":
-      return <MousePointerClick className="w-3 h-3 shrink-0 text-[#1B4DFF]" />;
+      return <MousePointerClick className="w-3 h-3 shrink-0 text-[#3B66FF]" />;
     default:
-      return <FormInput className="w-3 h-3 shrink-0 text-[#4A4D55]" />;
+      return <FormInput className="w-3 h-3 shrink-0 text-[var(--ink-secondary)]" />;
   }
 }
 
@@ -81,7 +81,7 @@ function StatusChip({ status }: { status?: FlowNodeData["status"] }) {
     return (
       <span
         title="Validado com o cliente"
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono font-medium bg-[#E6F4F1] text-[#0F766E] border border-[#A7DCD2] rounded-[4px]"
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono font-medium bg-[#0F766E]/20 text-[#2DD4BF] border border-[#0F766E] rounded-[4px]"
       >
         <CheckCircle2 className="w-2.5 h-2.5" />
         OK
@@ -92,7 +92,7 @@ function StatusChip({ status }: { status?: FlowNodeData["status"] }) {
     return (
       <span
         title="Dúvida pendente no briefing"
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono font-medium bg-[#FEF0EE] text-[#D9381E] border border-[#F5B8B4] rounded-[4px]"
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono font-medium bg-[#D9381E]/20 text-[#F87171] border border-[#D9381E] rounded-[4px]"
       >
         <AlertCircle className="w-2.5 h-2.5" />
         DÚVIDA
@@ -100,7 +100,7 @@ function StatusChip({ status }: { status?: FlowNodeData["status"] }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono text-[#4A4D55] bg-[#EFECE4] border border-[#D8D3C8] rounded-[4px]">
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono text-[var(--ink-secondary)] bg-[var(--bg-panel)] border border-[var(--rule-hairline)] rounded-[4px]">
       <Clock className="w-2.5 h-2.5" />
       RASCUNHO
     </span>
@@ -127,18 +127,20 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
 
   return (
     <div
-      className={`w-[288px] bg-[#FAF8F4] rounded-[12px] border transition-colors ${
-        selected ? "border-[#1B4DFF] ring-2 ring-[#1B4DFF]/20" : "border-[#16181D]"
+      className={`w-[288px] bg-[var(--bg-card)] text-[var(--ink-primary)] rounded-[12px] border transition-colors ${
+        selected
+          ? "border-[#3B66FF] ring-2 ring-[#3B66FF]/30"
+          : "border-[var(--rule-strong)]"
       }`}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-[#FAF8F4] !border-2 !border-[#1B4DFF]"
+        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[#3B66FF]"
       />
 
       {/* Top Blueprint Header Strip */}
-      <div className="flex items-center justify-between px-3 py-2 bg-[#1B4DFF] text-[#FAF8F4] rounded-t-[11px] border-b border-[#16181D]">
+      <div className="flex items-center justify-between px-3 py-2 bg-[#1B4DFF] text-[#FAF8F4] rounded-t-[11px] border-b border-[var(--rule-strong)]">
         <div className="flex items-center gap-1.5">
           <Monitor className="w-3.5 h-3.5 shrink-0" />
           <span className="font-mono text-[11px] font-semibold tracking-tight tabular-nums">
@@ -168,22 +170,22 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
       {/* Main Content */}
       <div className="p-3 space-y-2.5">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[14px] font-semibold text-[#16181D] leading-snug">
+          <p className="text-[13.5px] font-semibold text-[var(--ink-primary)] leading-snug">
             {data.title}
           </p>
         </div>
 
         {data.subtitle && (
-          <p className="text-[12px] text-[#4A4D55] leading-relaxed">
+          <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
             {data.subtitle}
           </p>
         )}
 
         {/* Mini-Wireframe Schematic of Screen Fields */}
         {fields.length > 0 && (
-          <div className="bg-[#F6F3EC] border border-[#D8D3C8] rounded-[8px] p-2 space-y-1.5">
-            <div className="flex items-center justify-between border-b border-[#D8D3C8] pb-1">
-              <span className="font-mono text-[10px] text-[#4A4D55]">
+          <div className="bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[8px] p-2 space-y-1.5">
+            <div className="flex items-center justify-between border-b border-[var(--rule-hairline)] pb-1">
+              <span className="font-mono text-[10px] text-[var(--ink-secondary)]">
                 WIREFRAME · {fields.length} COMPONENTE{fields.length > 1 ? "S" : ""}
               </span>
               <StatusChip status={data.status} />
@@ -195,7 +197,7 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
                   className={`flex items-center justify-between gap-1.5 px-2 py-1 rounded-[4px] text-[11px] border ${
                     f.kind === "button"
                       ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1438B8] font-medium"
-                      : "bg-[#FAF8F4] text-[#16181D] border-[#D8D3C8]"
+                      : "bg-[var(--bg-card)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
                   }`}
                 >
                   <div className="flex items-center gap-1.5 truncate">
@@ -203,8 +205,10 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
                     <span className="truncate">{f.label}</span>
                   </div>
                   <span
-                    className={`font-mono text-[9px] uppercase shrink-0 ${
-                      f.kind === "button" ? "text-[#DCE6FF]" : "text-[#4A4D55]"
+                    className={`font-mono text-[10px] uppercase shrink-0 ${
+                      f.kind === "button"
+                        ? "text-[#DCE6FF]"
+                        : "text-[var(--ink-secondary)]"
                     }`}
                   >
                     {f.kind}
@@ -212,7 +216,7 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
                 </div>
               ))}
               {fields.length > 4 && (
-                <div className="text-center font-mono text-[10px] text-[#4A4D55] pt-0.5">
+                <div className="text-center font-mono text-[10px] text-[var(--ink-secondary)] pt-0.5">
                   + {fields.length - 4} campo(s) no escopo
                 </div>
               )}
@@ -221,13 +225,13 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
         )}
 
         {/* Footer metadata */}
-        <div className="flex items-center justify-between pt-1 border-t border-[#D8D3C8] text-[11px] text-[#4A4D55]">
-          <span className="inline-flex items-center gap-1 font-medium text-[#16181D]">
-            <User className="w-3 h-3 text-[#1B4DFF]" />
+        <div className="flex items-center justify-between pt-1 border-t border-[var(--rule-hairline)] text-[11px] text-[var(--ink-secondary)]">
+          <span className="inline-flex items-center gap-1 font-medium text-[var(--ink-primary)]">
+            <User className="w-3 h-3 text-[#3B66FF]" />
             {data.actor || "Usuário"}
           </span>
           {data.businessRules && data.businessRules.length > 0 && (
-            <span className="font-mono text-[10px] text-[#4A4D55] tabular-nums">
+            <span className="font-mono text-[10px] text-[var(--ink-secondary)] tabular-nums">
               {data.businessRules.length} regra(s)
             </span>
           )}
@@ -237,7 +241,7 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-[#1B4DFF] !border-2 !border-[#FAF8F4]"
+        className="!w-3 !h-3 !bg-[#3B66FF] !border-2 !border-[var(--bg-card)]"
       />
     </div>
   );
@@ -250,17 +254,19 @@ export function ActionNode({ data, selected }: NodeProps<BriefingNode>) {
   const openComments = (data.comments || []).filter((c) => !c.resolved).length;
   return (
     <div
-      className={`w-[244px] bg-[#FAF8F4] rounded-[12px] border transition-colors ${
-        selected ? "border-[#1B4DFF] ring-2 ring-[#1B4DFF]/20" : "border-[#16181D]"
+      className={`w-[244px] bg-[var(--bg-card)] text-[var(--ink-primary)] rounded-[12px] border transition-colors ${
+        selected
+          ? "border-[#3B66FF] ring-2 ring-[#3B66FF]/30"
+          : "border-[var(--rule-strong)]"
       }`}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-[#FAF8F4] !border-2 !border-[#B45309]"
+        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[#D97706]"
       />
 
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#B45309] text-[#FAF8F4] rounded-t-[11px] border-b border-[#16181D]">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#B45309] text-[#FAF8F4] rounded-t-[11px] border-b border-[var(--rule-strong)]">
         <div className="flex items-center gap-1.5">
           <Zap className="w-3.5 h-3.5 shrink-0" />
           <span className="font-mono text-[11px] font-semibold tabular-nums">
@@ -271,17 +277,17 @@ export function ActionNode({ data, selected }: NodeProps<BriefingNode>) {
       </div>
 
       <div className="p-3 space-y-2">
-        <p className="text-[13px] font-semibold text-[#16181D] leading-snug">
+        <p className="text-[13.5px] font-semibold text-[var(--ink-primary)] leading-snug">
           {data.title}
         </p>
         {data.subtitle && (
-          <p className="text-[11.5px] text-[#4A4D55] leading-relaxed">
+          <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
             {data.subtitle}
           </p>
         )}
-        <div className="flex items-center justify-between pt-1.5 border-t border-[#D8D3C8] text-[11px]">
-          <span className="inline-flex items-center gap-1 font-medium text-[#16181D]">
-            <User className="w-3 h-3 text-[#B45309]" />
+        <div className="flex items-center justify-between pt-1.5 border-t border-[var(--rule-hairline)] text-[11px]">
+          <span className="inline-flex items-center gap-1 font-medium text-[var(--ink-primary)]">
+            <User className="w-3 h-3 text-[#F59E0B]" />
             {data.actor || "Operador"}
           </span>
           <StatusChip status={data.status} />
@@ -291,7 +297,7 @@ export function ActionNode({ data, selected }: NodeProps<BriefingNode>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-[#B45309] !border-2 !border-[#FAF8F4]"
+        className="!w-3 !h-3 !bg-[#D97706] !border-2 !border-[var(--bg-card)]"
       />
     </div>
   );
@@ -304,17 +310,19 @@ export function DecisionNode({ data, selected }: NodeProps<BriefingNode>) {
   const openComments = (data.comments || []).filter((c) => !c.resolved).length;
   return (
     <div
-      className={`w-[258px] bg-[#FAF8F4] rounded-[12px] border transition-colors ${
-        selected ? "border-[#1B4DFF] ring-2 ring-[#1B4DFF]/20" : "border-[#16181D]"
+      className={`w-[258px] bg-[var(--bg-card)] text-[var(--ink-primary)] rounded-[12px] border transition-colors ${
+        selected
+          ? "border-[#3B66FF] ring-2 ring-[#3B66FF]/30"
+          : "border-[var(--rule-strong)]"
       }`}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-[#FAF8F4] !border-2 !border-[#D9381E]"
+        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[#D9381E]"
       />
 
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#D9381E] text-[#FAF8F4] rounded-t-[11px] border-b border-[#16181D]">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#D9381E] text-[#FAF8F4] rounded-t-[11px] border-b border-[var(--rule-strong)]">
         <div className="flex items-center gap-1.5">
           <GitBranch className="w-3.5 h-3.5 shrink-0" />
           <span className="font-mono text-[11px] font-semibold tabular-nums">
@@ -325,23 +333,23 @@ export function DecisionNode({ data, selected }: NodeProps<BriefingNode>) {
       </div>
 
       <div className="p-3 space-y-2">
-        <p className="text-[13.5px] font-semibold text-[#16181D] leading-snug">
+        <p className="text-[13.5px] font-semibold text-[var(--ink-primary)] leading-snug">
           {data.title}
         </p>
         {data.subtitle && (
-          <p className="text-[11.5px] text-[#4A4D55] leading-relaxed">
+          <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
             {data.subtitle}
           </p>
         )}
 
         {data.businessRules && data.businessRules.length > 0 && (
-          <div className="bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] p-2 space-y-1">
+          <div className="bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] p-2 space-y-1">
             {data.businessRules.slice(0, 2).map((rule, idx) => (
               <p
                 key={idx}
-                className="text-[11px] text-[#16181D] leading-snug flex items-start gap-1"
+                className="text-[11px] text-[var(--ink-primary)] leading-snug flex items-start gap-1"
               >
-                <ArrowRight className="w-3 h-3 shrink-0 mt-0.5 text-[#D9381E]" />
+                <ArrowRight className="w-3 h-3 shrink-0 mt-0.5 text-[#E54D2E]" />
                 <span>{rule}</span>
               </p>
             ))}
@@ -349,9 +357,9 @@ export function DecisionNode({ data, selected }: NodeProps<BriefingNode>) {
         )}
 
         {/* Dual port legend */}
-        <div className="flex items-center justify-between pt-1.5 border-t border-[#D8D3C8] font-mono text-[10px]">
-          <span className="text-[#0F766E] font-semibold">● Porta Superior: SIM</span>
-          <span className="text-[#D9381E] font-semibold">● Porta Inferior: NÃO</span>
+        <div className="flex items-center justify-between pt-1.5 border-t border-[var(--rule-hairline)] font-mono text-[10px]">
+          <span className="text-[#149E93] font-semibold">● Porta Sup: SIM</span>
+          <span className="text-[#F87171] font-semibold">● Porta Inf: NÃO</span>
         </div>
       </div>
 
@@ -362,7 +370,7 @@ export function DecisionNode({ data, selected }: NodeProps<BriefingNode>) {
         position={Position.Right}
         style={{ top: "38%" }}
         title="Caminho SIM / Verdadeiro"
-        className="!w-3.5 !h-3.5 !bg-[#0F766E] !border-2 !border-[#FAF8F4]"
+        className="!w-3.5 !h-3.5 !bg-[#149E93] !border-2 !border-[var(--bg-card)]"
       />
       {/* Output Handle: NO */}
       <Handle
@@ -371,7 +379,7 @@ export function DecisionNode({ data, selected }: NodeProps<BriefingNode>) {
         position={Position.Right}
         style={{ top: "74%" }}
         title="Caminho NÃO / Exceção"
-        className="!w-3.5 !h-3.5 !bg-[#D9381E] !border-2 !border-[#FAF8F4]"
+        className="!w-3.5 !h-3.5 !bg-[#E54D2E] !border-2 !border-[var(--bg-card)]"
       />
     </div>
   );
@@ -383,17 +391,19 @@ export function DecisionNode({ data, selected }: NodeProps<BriefingNode>) {
 export function IntegrationNode({ data, selected }: NodeProps<BriefingNode>) {
   return (
     <div
-      className={`w-[258px] bg-[#FAF8F4] rounded-[12px] border transition-colors ${
-        selected ? "border-[#1B4DFF] ring-2 ring-[#1B4DFF]/20" : "border-[#16181D]"
+      className={`w-[258px] bg-[var(--bg-card)] text-[var(--ink-primary)] rounded-[12px] border transition-colors ${
+        selected
+          ? "border-[#3B66FF] ring-2 ring-[#3B66FF]/30"
+          : "border-[var(--rule-strong)]"
       }`}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-[#FAF8F4] !border-2 !border-[#6D28D9]"
+        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[#7C3AED]"
       />
 
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#6D28D9] text-[#FAF8F4] rounded-t-[11px] border-b border-[#16181D]">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#6D28D9] text-[#FAF8F4] rounded-t-[11px] border-b border-[var(--rule-strong)]">
         <div className="flex items-center gap-1.5">
           <Webhook className="w-3.5 h-3.5 shrink-0" />
           <span className="font-mono text-[11px] font-semibold tabular-nums">
@@ -406,16 +416,16 @@ export function IntegrationNode({ data, selected }: NodeProps<BriefingNode>) {
       </div>
 
       <div className="p-3 space-y-2">
-        <p className="text-[13px] font-semibold text-[#16181D] leading-snug">
+        <p className="text-[13.5px] font-semibold text-[var(--ink-primary)] leading-snug">
           {data.title}
         </p>
         {data.endpoint && (
-          <div className="px-2 py-1 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[4px] font-mono text-[10.5px] text-[#16181D] truncate">
+          <div className="px-2 py-1 bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[4px] font-mono text-[11px] text-[var(--ink-primary)] truncate">
             {data.endpoint}
           </div>
         )}
         {data.subtitle && (
-          <p className="text-[11.5px] text-[#4A4D55] leading-relaxed">
+          <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
             {data.subtitle}
           </p>
         )}
@@ -424,7 +434,7 @@ export function IntegrationNode({ data, selected }: NodeProps<BriefingNode>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-[#6D28D9] !border-2 !border-[#FAF8F4]"
+        className="!w-3 !h-3 !bg-[#7C3AED] !border-2 !border-[var(--bg-card)]"
       />
     </div>
   );
@@ -437,17 +447,19 @@ export function DatabaseNode({ data, selected }: NodeProps<BriefingNode>) {
   const cols = data.fields || [];
   return (
     <div
-      className={`w-[254px] bg-[#FAF8F4] rounded-[12px] border transition-colors ${
-        selected ? "border-[#1B4DFF] ring-2 ring-[#1B4DFF]/20" : "border-[#16181D]"
+      className={`w-[254px] bg-[var(--bg-card)] text-[var(--ink-primary)] rounded-[12px] border transition-colors ${
+        selected
+          ? "border-[#3B66FF] ring-2 ring-[#3B66FF]/30"
+          : "border-[var(--rule-strong)]"
       }`}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-[#FAF8F4] !border-2 !border-[#0F766E]"
+        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[#149E93]"
       />
 
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#0F766E] text-[#FAF8F4] rounded-t-[11px] border-b border-[#16181D]">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#0F766E] text-[#FAF8F4] rounded-t-[11px] border-b border-[var(--rule-strong)]">
         <div className="flex items-center gap-1.5">
           <Database className="w-3.5 h-3.5 shrink-0" />
           <span className="font-mono text-[11px] font-semibold tabular-nums">
@@ -462,19 +474,19 @@ export function DatabaseNode({ data, selected }: NodeProps<BriefingNode>) {
       </div>
 
       <div className="p-3 space-y-2">
-        <p className="text-[13px] font-semibold text-[#16181D] leading-snug">
+        <p className="text-[13.5px] font-semibold text-[var(--ink-primary)] leading-snug">
           {data.title}
         </p>
         {cols.length > 0 && (
-          <div className="bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] divide-y divide-[#D8D3C8]">
+          <div className="bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] divide-y divide-[var(--rule-hairline)]">
             {cols.slice(0, 4).map((c) => (
               <div
                 key={c.id}
-                className="px-2 py-1 flex items-center justify-between font-mono text-[10.5px] text-[#16181D]"
+                className="px-2 py-1 flex items-center justify-between font-mono text-[11px] text-[var(--ink-primary)]"
               >
                 <span className="truncate">{c.label}</span>
                 {c.required && (
-                  <span className="text-[9px] text-[#0F766E] font-semibold">
+                  <span className="text-[10px] text-[#149E93] font-semibold">
                     REQ
                   </span>
                 )}
@@ -487,7 +499,7 @@ export function DatabaseNode({ data, selected }: NodeProps<BriefingNode>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-[#0F766E] !border-2 !border-[#FAF8F4]"
+        className="!w-3 !h-3 !bg-[#149E93] !border-2 !border-[var(--bg-card)]"
       />
     </div>
   );
@@ -503,26 +515,26 @@ const STICKY_PALETTES: Record<
   amber: {
     bg: "#FFF3C4",
     headerBg: "#F5C542",
-    border: "#B8860B",
-    ink: "#1F1A0C",
+    border: "#D8D3C8",
+    ink: "#16181D",
   },
   coral: {
-    bg: "#FFE4E1",
+    bg: "#FEF0EE",
     headerBg: "#F87171",
-    border: "#B91C1C",
-    ink: "#261111",
+    border: "#F5B8B4",
+    ink: "#16181D",
   },
   mint: {
-    bg: "#DCFCE7",
+    bg: "#E6F4F1",
     headerBg: "#4ADE80",
-    border: "#15803D",
-    ink: "#0F291A",
+    border: "#A7DCD2",
+    ink: "#16181D",
   },
   sky: {
-    bg: "#DBEAFE",
+    bg: "#E8EEFF",
     headerBg: "#60A5FA",
-    border: "#1D4ED8",
-    ink: "#101E36",
+    border: "#B8CAFF",
+    ink: "#16181D",
   },
 };
 
@@ -532,11 +544,11 @@ export function StickyNode({ data, selected }: NodeProps<BriefingNode>) {
     <div
       style={{
         backgroundColor: pal.bg,
-        borderColor: selected ? "#1B4DFF" : pal.border,
+        borderColor: selected ? "#3B66FF" : pal.border,
         color: pal.ink,
       }}
       className={`w-[236px] rounded-[12px] border transition-colors ${
-        selected ? "ring-2 ring-[#1B4DFF]/25" : ""
+        selected ? "ring-2 ring-[#3B66FF]/35" : ""
       }`}
     >
       <Handle
@@ -547,11 +559,11 @@ export function StickyNode({ data, selected }: NodeProps<BriefingNode>) {
 
       <div
         style={{ backgroundColor: pal.headerBg, borderColor: pal.border }}
-        className="flex items-center justify-between px-3 py-1.5 rounded-t-[11px] border-b"
+        className="flex items-center justify-between px-3 py-1.5 rounded-t-[11px] border-b text-[#16181D]"
       >
         <div className="flex items-center gap-1.5">
           <StickyNote className="w-3.5 h-3.5" />
-          <span className="font-mono text-[10.5px] font-semibold">
+          <span className="font-mono text-[11px] font-semibold">
             {data.stickyTag || "NOTA DE BRIEFING"}
           </span>
         </div>
@@ -559,14 +571,14 @@ export function StickyNode({ data, selected }: NodeProps<BriefingNode>) {
       </div>
 
       <div className="p-3 space-y-2">
-        <p className="text-[13px] font-semibold leading-snug">{data.title}</p>
+        <p className="text-[13.5px] font-semibold leading-snug">{data.title}</p>
         {(data.description || data.subtitle) && (
           <p className="text-[12px] leading-relaxed opacity-90">
             {data.description || data.subtitle}
           </p>
         )}
         {data.actor && (
-          <div className="pt-1 border-t border-black/10 flex items-center justify-between text-[10.5px] font-mono opacity-80">
+          <div className="pt-1 border-t border-black/10 flex items-center justify-between text-[11px] font-mono opacity-80">
             <span>Fonte: {data.actor}</span>
           </div>
         )}
@@ -588,28 +600,34 @@ export function ShapeNode({ data, selected }: NodeProps<BriefingNode>) {
   const variant = data.shapeVariant || "rectangle";
   return (
     <div
-      className={`min-w-[180px] max-w-[240px] px-4 py-3 bg-[#FAF8F4] border-2 text-center transition-colors ${
+      className={`min-w-[180px] max-w-[240px] px-4 py-3 bg-[var(--bg-card)] text-[var(--ink-primary)] border-2 text-center transition-colors ${
         variant === "pill" ? "rounded-full" : "rounded-[12px]"
-      } ${selected ? "border-[#1B4DFF] ring-2 ring-[#1B4DFF]/20" : "border-[#16181D]"}`}
+      } ${
+        selected
+          ? "border-[#3B66FF] ring-2 ring-[#3B66FF]/30"
+          : "border-[var(--rule-strong)]"
+      }`}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-[#FAF8F4] !border-2 !border-[#16181D]"
+        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--rule-strong)]"
       />
-      <span className="font-mono text-[10px] text-[#4A4D55] block mb-0.5">
+      <span className="font-mono text-[10px] text-[var(--ink-secondary)] block mb-0.5">
         {data.code}
       </span>
-      <p className="text-[13px] font-semibold text-[#16181D] leading-snug">
+      <p className="text-[13.5px] font-semibold text-[var(--ink-primary)] leading-snug">
         {data.title}
       </p>
       {data.subtitle && (
-        <p className="text-[11px] text-[#4A4D55] mt-1">{data.subtitle}</p>
+        <p className="text-[12px] text-[var(--ink-secondary)] mt-1">
+          {data.subtitle}
+        </p>
       )}
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-[#16181D] !border-2 !border-[#FAF8F4]"
+        className="!w-3 !h-3 !bg-[var(--rule-strong)] !border-2 !border-[var(--bg-card)]"
       />
     </div>
   );
@@ -641,16 +659,16 @@ export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
       style={{ width, height }}
       className={`rounded-[14px] border border-dashed transition-colors pointer-events-all ${
         selected
-          ? "border-[#1B4DFF] bg-[#1B4DFF]/[0.04]"
-          : "border-[#9E988B] bg-[#EFECE4]/55"
+          ? "border-[#3B66FF] bg-[#3B66FF]/[0.06]"
+          : "border-[var(--rule-strong)] bg-[var(--bg-panel)]/55"
       }`}
     >
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-dashed border-[#9E988B] bg-[#EFECE4]/90 rounded-t-[13px]">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-dashed border-[var(--rule-strong)] bg-[var(--bg-panel)]/95 rounded-t-[13px]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="font-mono text-[11px] font-semibold px-2 py-0.5 bg-[#16181D] text-[#FAF8F4] rounded-[4px] tabular-nums shrink-0">
+          <span className="font-mono text-[11px] font-semibold px-2 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[4px] tabular-nums shrink-0">
             {data.code || "FASE"}
           </span>
-          <span className="text-[13.5px] font-bold tracking-tight text-[#16181D] truncate">
+          <span className="text-[13.5px] font-bold tracking-tight text-[var(--ink-primary)] truncate">
             {data.title}
           </span>
         </div>
@@ -660,7 +678,7 @@ export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
             type="button"
             onClick={(e) => triggerPhaseAction(e, "copy-ai")}
             title="Copiar Prompt de IA apenas com as telas, fluxos e regras desta Fase"
-            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[#FAF8F4] hover:bg-[#1B4DFF] text-[#16181D] hover:text-[#FAF8F4] border border-[#16181D] font-mono text-[10px] font-semibold transition-colors"
+            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[var(--bg-card)] hover:bg-[#1B4DFF] text-[var(--ink-primary)] hover:text-[#FAF8F4] border border-[var(--rule-strong)] font-mono text-[10px] font-semibold transition-colors"
           >
             <Sparkles className="w-3 h-3" />
             <span>Prompt IA da Fase</span>
@@ -669,7 +687,7 @@ export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
             type="button"
             onClick={(e) => triggerPhaseAction(e, "download")}
             title="Baixar arquivo .md apenas com os itens desta Fase"
-            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[#16181D] hover:bg-[#1B4DFF] text-[#FAF8F4] font-mono text-[10px] font-semibold transition-colors"
+            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] font-mono text-[10px] font-semibold transition-colors"
           >
             <Download className="w-3 h-3" />
             <span>.MD da Fase</span>
@@ -677,7 +695,7 @@ export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
         </div>
       </div>
       {data.subtitle && (
-        <div className="px-4 py-1.5 text-[12px] text-[#4A4D55] border-b border-dashed border-[#D8D3C8]/70 bg-[#FAF8F4]/50">
+        <div className="px-4 py-1.5 text-[12px] text-[var(--ink-secondary)] border-b border-dashed border-[var(--rule-hairline)] bg-[var(--bg-card)]/40">
           {data.subtitle}
         </div>
       )}

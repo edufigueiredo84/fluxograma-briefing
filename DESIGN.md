@@ -15,6 +15,14 @@ colors:
   india-ink: "#16181D"
   slate-secondary: "#4A4D55"
   hairline-rule: "#D8D3C8"
+  dark-vellum-ground: "#111318"
+  dark-panel-slate: "#171A21"
+  dark-card-slate: "#1E222B"
+  dark-subcard-slate: "#14171E"
+  dark-ink-primary: "#F3F1EA"
+  dark-ink-secondary: "#9CA4B4"
+  dark-hairline-rule: "#2E3443"
+  dark-strong-rule: "#3E465A"
 typography:
   headline:
     fontFamily: "Archivo, system-ui, -apple-system, sans-serif"

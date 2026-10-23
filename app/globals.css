@@ -1,16 +1,39 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="light"] {
   --bg-vellum: #F6F3EC;
   --bg-panel: #EFECE4;
   --bg-card: #FAF8F4;
+  --bg-subcard: #F6F3EC;
+  --bg-hover: #E5E0D5;
   --ink-primary: #16181D;
   --ink-secondary: #4A4D55;
   --rule-hairline: #D8D3C8;
+  --rule-strong: #16181D;
+  --grid-dot: #B8B1A2;
   --accent-cobalt: #1B4DFF;
   --accent-vermilion: #D9381E;
   --accent-emerald: #0F766E;
   --accent-violet: #6D28D9;
+  --accent-amber: #F5C542;
+}
+
+[data-theme="dark"] {
+  --bg-vellum: #111318;
+  --bg-panel: #171A21;
+  --bg-card: #1E222B;
+  --bg-subcard: #14171E;
+  --bg-hover: #262B36;
+  --ink-primary: #F3F1EA;
+  --ink-secondary: #9CA4B4;
+  --rule-hairline: #2E3443;
+  --rule-strong: #3E465A;
+  --grid-dot: #2E3545;
+  --accent-cobalt: #3B66FF;
+  --accent-vermilion: #E54D2E;
+  --accent-emerald: #149E93;
+  --accent-violet: #7C3AED;
   --accent-amber: #F5C542;
 }
 
@@ -32,7 +55,7 @@ body {
 
 ::selection {
   background-color: var(--accent-cobalt);
-  color: var(--bg-card);
+  color: #FAF8F4;
 }
 
 :focus-visible {
@@ -51,12 +74,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #B8B1A2;
+  background: var(--rule-strong);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #8C8577;
+  background: var(--ink-secondary);
 }
 
 /* React Flow Controls & Edges Theme */
@@ -68,9 +91,13 @@ body {
 }
 
 .react-flow__controls-button:hover {
-  background-color: var(--bg-panel) !important;
+  background-color: var(--bg-hover) !important;
 }
 
 .react-flow__edge-path {
   transition: stroke 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(17, 19, 24, 0.45);
 }
