@@ -39,6 +39,8 @@ import {
   ArrowRight,
   Eraser,
   RotateCcw,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { BRIEFING_NODE_TYPES } from "@/components/nodes/BriefingNodes";
 import {
@@ -46,6 +48,7 @@ import {
   type DrawerTab,
 } from "@/components/RightDossierDrawer";
 import { BOARD_TEMPLATES } from "@/lib/templates";
+import { compilePhaseToMarkdown } from "@/lib/prd-compiler";
 import type {
   BoardProject,
   BriefingEdge,
@@ -143,6 +146,11 @@ export function BriefingStudio() {
     nodes: BriefingNode[];
     edges: BriefingEdge[];
   } | null>(null);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string>("all");
+  const [savedBoards, setSavedBoards] = useState<BoardProject[]>(
+    Object.values(BOARD_TEMPLATES)
+  );
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -151,12 +159,29 @@ export function BriefingStudio() {
     setTimeout(() => setToastMsg(null), 2800);
   }, []);
 
+  const refreshSavedBoards = useCallback(async (customKey?: string) => {
+    try {
+      const res = await fetch("/api/boards", {
+        headers: customKey ? { "x-supabase-key": customKey } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.boards) && data.boards.length > 0) {
+          setSavedBoards(data.boards);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Load saved anonKey and URL query parameters (?board=...&mode=client)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const storedKey =
       window.localStorage.getItem("briefing_supabase_anon_key") || "";
     if (storedKey) setAnonKey(storedKey);
+    refreshSavedBoards(storedKey);
 
     const params = new URLSearchParams(window.location.search);
     const boardParam = params.get("board");
@@ -628,12 +653,55 @@ export function BriefingStudio() {
 
   const handleClearCanvas = useCallback(() => {
     if (isClientMode || nodes.length === 0) return;
-    setUndoSnapshot({ nodes, edges });
-    setNodes([]);
-    setEdges([]);
-    setSelectedNodeId(null);
-    showToast("Tela limpa! Pronta para iniciar um novo fluxo do zero.");
-  }, [isClientMode, nodes, edges, setNodes, setEdges, showToast]);
+    setConfirmClearOpen(true);
+  }, [isClientMode, nodes.length]);
+
+  const executeClearCanvas = useCallback(
+    async (saveBeforeClear: boolean) => {
+      if (saveBeforeClear) {
+        try {
+          const snapshotToSave: BoardProject = {
+            ...boardMeta,
+            updatedAt: new Date().toISOString(),
+            nodes,
+            edges,
+          };
+          await fetch("/api/boards", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              board: snapshotToSave,
+              supabaseAnonKey: anonKey || undefined,
+            }),
+          });
+          await refreshSavedBoards(anonKey);
+        } catch {
+          // ignore
+        }
+      }
+
+      setUndoSnapshot({ nodes, edges });
+      setNodes([]);
+      setEdges([]);
+      setSelectedNodeId(null);
+      setConfirmClearOpen(false);
+      showToast(
+        saveBeforeClear
+          ? "Projeto salvo na galeria e tela limpa para novo briefing!"
+          : "Tela limpa! Você pode desfazer no topo se precisar."
+      );
+    },
+    [
+      anonKey,
+      boardMeta,
+      edges,
+      nodes,
+      refreshSavedBoards,
+      setEdges,
+      setNodes,
+      showToast,
+    ]
+  );
 
   const handleUndoClear = useCallback(() => {
     if (!undoSnapshot) return;
@@ -643,6 +711,104 @@ export function BriefingStudio() {
     setUndoSnapshot(null);
     showToast("Fluxo anterior restaurado!");
   }, [undoSnapshot, setNodes, setEdges, showToast]);
+
+  const handleSaveAsNewProject = async () => {
+    const newId = `briefing-${Date.now().toString().slice(-6)}`;
+    const newBoard: BoardProject = {
+      ...boardMeta,
+      id: newId,
+      title: `${boardMeta.title} (Cópia)`,
+      updatedAt: new Date().toISOString(),
+      nodes,
+      edges,
+    };
+    setBoardMeta({
+      id: newBoard.id,
+      title: newBoard.title,
+      clientName: newBoard.clientName,
+      systemType: newBoard.systemType,
+      version: newBoard.version,
+      objective: newBoard.objective,
+      updatedAt: newBoard.updatedAt,
+    });
+    await fetch("/api/boards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        board: newBoard,
+        supabaseAnonKey: anonKey || undefined,
+      }),
+    });
+    await refreshSavedBoards(anonKey);
+    showToast(`Salvo como novo projeto (${newId}) na Galeria!`);
+  };
+
+  const handleLoadProject = useCallback(
+    (proj: BoardProject) => {
+      setBoardMeta({
+        id: proj.id,
+        title: proj.title,
+        clientName: proj.clientName,
+        systemType: proj.systemType,
+        version: proj.version,
+        objective: proj.objective,
+        updatedAt: proj.updatedAt,
+      });
+      setNodes(proj.nodes || []);
+      setEdges(styleEdges(proj.edges || []));
+      setSelectedNodeId(proj.nodes?.[0]?.id || null);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("board", proj.id);
+        window.history.replaceState({}, "", url.toString());
+      }
+      showToast(`Projeto "${proj.title}" aberto!`);
+    },
+    [setNodes, setEdges, showToast]
+  );
+
+  // Listen to Phase Export buttons clicked directly on Section headers on the canvas
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{
+        sectionId: string;
+        action: "download" | "copy-ai";
+      }>;
+      if (!custom.detail?.sectionId) return;
+      const { sectionId, action } = custom.detail;
+      const fullBoard: BoardProject = {
+        ...boardMeta,
+        nodes,
+        edges,
+      };
+      const md = compilePhaseToMarkdown(fullBoard, sectionId);
+      const secNode = nodes.find((n) => n.id === sectionId);
+      const phaseCode = (secNode?.data.code || "fase").toLowerCase();
+
+      setSelectedPhaseId(sectionId);
+      setActiveTab("prd");
+      setDrawerOpen(true);
+
+      if (action === "copy-ai") {
+        navigator.clipboard.writeText(md);
+        showToast(
+          `Prompt de IA da ${secNode?.data.code || "Fase"} copiado para a área de transferência!`
+        );
+      } else {
+        const blob = new Blob([md], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${boardMeta.id}-${phaseCode}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`Arquivo .MD da ${secNode?.data.code || "Fase"} baixado!`);
+      }
+    };
+
+    window.addEventListener("briefing-phase-export", handler);
+    return () => window.removeEventListener("briefing-phase-export", handler);
+  }, [boardMeta, nodes, edges, showToast]);
 
   const handleSaveCloud = async () => {
     setIsSaving(true);
@@ -670,8 +836,9 @@ export function BriefingStudio() {
       } else {
         setSyncStatus("local");
         if (data.supabaseError) setSupabaseError(data.supabaseError);
-        showToast("Salvo! Link compartilhável pronto para envio.");
+        showToast("Salvo na Galeria de Projetos! Link pronto para uso.");
       }
+      await refreshSavedBoards(anonKey);
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
         url.searchParams.set("board", fullBoard.id);
@@ -1145,9 +1312,12 @@ export function BriefingStudio() {
         {drawerOpen && (
           <RightDossierDrawer
             board={currentBoard}
+            savedBoards={savedBoards}
             selectedNode={selectedNode}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+            selectedPhaseId={selectedPhaseId}
+            setSelectedPhaseId={setSelectedPhaseId}
             onUpdateNodeData={handleUpdateNodeData}
             onDeleteNode={handleDeleteNode}
             onDuplicateNode={handleDuplicateNode}
@@ -1161,6 +1331,8 @@ export function BriefingStudio() {
               );
             }}
             onSaveCloud={handleSaveCloud}
+            onSaveAsNewProject={handleSaveAsNewProject}
+            onLoadProject={handleLoadProject}
             isSaving={isSaving}
             syncStatus={syncStatus}
             supabaseError={supabaseError}
@@ -1168,6 +1340,84 @@ export function BriefingStudio() {
             setAnonKey={handleSetAnonKey}
             isClientMode={isClientMode}
           />
+        )}
+
+        {/* CONFIRM CLEAR CANVAS MODAL */}
+        {confirmClearOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-modal-title"
+            className="fixed inset-0 z-50 bg-[#16181D]/60 flex items-center justify-center p-4"
+          >
+            <div className="w-full max-w-[440px] bg-[#FAF8F4] border border-[#16181D] rounded-[14px] overflow-hidden">
+              <div className="px-4 py-3 bg-[#EFECE4] border-b border-[#16181D] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[#D9381E]" />
+                  <h2
+                    id="clear-modal-title"
+                    className="text-[14px] font-bold text-[#16181D]"
+                  >
+                    Confirmar Limpeza da Tela Toda
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearOpen(false)}
+                  className="p-1 text-[#4A4D55] hover:text-[#16181D] rounded-[4px]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-3">
+                <p className="text-[12px] text-[#16181D] leading-relaxed">
+                  Você está prestes a remover todos os{" "}
+                  <strong>{nodes.length} blocos</strong> e{" "}
+                  <strong>{edges.length} conexões</strong> atualmente desenhados no canvas do projeto{" "}
+                  <strong>&ldquo;{boardMeta.title}&rdquo;</strong>.
+                </p>
+
+                <div className="p-3 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[8px] text-[12px] text-[#4A4D55] space-y-1">
+                  <p className="font-semibold text-[#16181D]">
+                    Onde meu projeto atual fica guardado?
+                  </p>
+                  <p>
+                    Se você clicar em <strong>Salvar e Limpar</strong>, este fluxo ficará salvo na aba{" "}
+                    <strong>Projetos</strong> (à direita) no servidor local (<code>.data/boards.json</code>) e no Supabase, podendo ser reaberto a qualquer momento.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => executeClearCanvas(true)}
+                    className="w-full py-2.5 px-3 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[8px] text-[12px] font-semibold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Salvar Projeto Atual na Galeria e Limpar Tela</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => executeClearCanvas(false)}
+                    className="w-full py-2 px-3 bg-[#FEF0EE] hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] rounded-[8px] text-[12px] font-semibold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Eraser className="w-4 h-4" />
+                    <span>Limpar Tela Toda Sem Salvar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClearOpen(false)}
+                    className="w-full py-2 px-3 bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#D8D3C8] rounded-[8px] text-[12px] font-medium transition-colors"
+                  >
+                    Cancelar e Voltar ao Fluxo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

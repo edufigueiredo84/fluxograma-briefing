@@ -21,6 +21,8 @@ import {
   MousePointerClick,
   FormInput,
   ListFilter,
+  Download,
+  Sparkles,
 } from "lucide-react";
 import type { BriefingNode, FlowNodeData, ScreenField } from "@/lib/types";
 
@@ -616,9 +618,23 @@ export function ShapeNode({ data, selected }: NodeProps<BriefingNode>) {
 /**
  * 8. SECTION NODE (Fase Arquitetural da Jornada / Agrupador Macro)
  */
-export function SectionNode({ data, selected }: NodeProps<BriefingNode>) {
+export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
   const width = data.sectionWidth || 580;
   const height = data.sectionHeight || 560;
+
+  const triggerPhaseAction = (
+    e: React.MouseEvent,
+    action: "download" | "copy-ai"
+  ) => {
+    e.stopPropagation();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("briefing-phase-export", {
+          detail: { sectionId: id, action },
+        })
+      );
+    }
+  };
 
   return (
     <div
@@ -629,24 +645,42 @@ export function SectionNode({ data, selected }: NodeProps<BriefingNode>) {
           : "border-[#9E988B] bg-[#EFECE4]/55"
       }`}
     >
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-dashed border-[#9E988B] bg-[#EFECE4]/90 rounded-t-[13px]">
-        <div className="flex items-center gap-2.5">
-          <span className="font-mono text-[11px] font-semibold px-2 py-0.5 bg-[#16181D] text-[#FAF8F4] rounded-[4px] tabular-nums">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-dashed border-[#9E988B] bg-[#EFECE4]/90 rounded-t-[13px]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="font-mono text-[11px] font-semibold px-2 py-0.5 bg-[#16181D] text-[#FAF8F4] rounded-[4px] tabular-nums shrink-0">
             {data.code || "FASE"}
           </span>
-          <span className="text-[13px] font-bold tracking-tight text-[#16181D]">
+          <span className="text-[13.5px] font-bold tracking-tight text-[#16181D] truncate">
             {data.title}
           </span>
-          {data.subtitle && (
-            <span className="text-[12px] text-[#4A4D55] hidden sm:inline">
-              — {data.subtitle}
-            </span>
-          )}
         </div>
-        <span className="font-mono text-[10px] text-[#4A4D55] tabular-nums">
-          {width}×{height}px
-        </span>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => triggerPhaseAction(e, "copy-ai")}
+            title="Copiar Prompt de IA apenas com as telas, fluxos e regras desta Fase"
+            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[#FAF8F4] hover:bg-[#1B4DFF] text-[#16181D] hover:text-[#FAF8F4] border border-[#16181D] font-mono text-[10px] font-semibold transition-colors"
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>Prompt IA da Fase</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => triggerPhaseAction(e, "download")}
+            title="Baixar arquivo .md apenas com os itens desta Fase"
+            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[#16181D] hover:bg-[#1B4DFF] text-[#FAF8F4] font-mono text-[10px] font-semibold transition-colors"
+          >
+            <Download className="w-3 h-3" />
+            <span>.MD da Fase</span>
+          </button>
+        </div>
       </div>
+      {data.subtitle && (
+        <div className="px-4 py-1.5 text-[12px] text-[#4A4D55] border-b border-dashed border-[#D8D3C8]/70 bg-[#FAF8F4]/50">
+          {data.subtitle}
+        </div>
+      )}
     </div>
   );
 }

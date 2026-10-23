@@ -17,6 +17,8 @@ import {
   Share2,
   Database,
   Layers,
+  FolderOpen,
+  FilePlus2,
 } from "lucide-react";
 import type {
   BoardProject,
@@ -26,7 +28,12 @@ import type {
   ScreenField,
   StickyColor,
 } from "@/lib/types";
-import { compileBoardToPRD, compileBoardToAIPrompt } from "@/lib/prd-compiler";
+import {
+  compileBoardToPRD,
+  compileBoardToAIPrompt,
+  compilePhaseToMarkdown,
+  getNodesInSection,
+} from "@/lib/prd-compiler";
 import {
   SUPABASE_API_SETTINGS_URL,
   SUPABASE_MIGRATION_SQL,
@@ -38,15 +45,20 @@ export type DrawerTab = "inspector" | "prd" | "comments" | "cloud";
 
 interface RightDossierDrawerProps {
   board: BoardProject;
+  savedBoards: BoardProject[];
   selectedNode: BriefingNode | null;
   activeTab: DrawerTab;
   setActiveTab: (tab: DrawerTab) => void;
+  selectedPhaseId: string;
+  setSelectedPhaseId: (phaseId: string) => void;
   onUpdateNodeData: (nodeId: string, patch: Partial<FlowNodeData>) => void;
   onDeleteNode: (nodeId: string) => void;
   onDuplicateNode: (nodeId: string) => void;
   onUpdateBoardMeta: (patch: Partial<BoardProject>) => void;
   onSelectNodeById: (nodeId: string) => void;
   onSaveCloud: () => Promise<void>;
+  onSaveAsNewProject: () => Promise<void>;
+  onLoadProject: (project: BoardProject) => void;
   isSaving: boolean;
   syncStatus: "local" | "supabase" | "saving" | "error";
   supabaseError: string | null;
@@ -57,15 +69,20 @@ interface RightDossierDrawerProps {
 
 export function RightDossierDrawer({
   board,
+  savedBoards,
   selectedNode,
   activeTab,
   setActiveTab,
+  selectedPhaseId,
+  setSelectedPhaseId,
   onUpdateNodeData,
   onDeleteNode,
   onDuplicateNode,
   onUpdateBoardMeta,
   onSelectNodeById,
   onSaveCloud,
+  onSaveAsNewProject,
+  onLoadProject,
   isSaving,
   syncStatus,
   supabaseError,
@@ -88,6 +105,8 @@ export function RightDossierDrawer({
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
   };
+
+  const sectionNodes = board.nodes.filter((n) => n.data.category === "section");
 
   const allComments = board.nodes.flatMap((n) =>
     (n.data.comments || []).map((c) => ({
@@ -173,21 +192,29 @@ export function RightDossierDrawer({
     onUpdateNodeData(nodeId, { comments: updated });
   };
 
+  // Compute compiled output (whole board OR filtered to a single Phase)
   const compiledOutput =
-    prdFormat === "prd"
+    selectedPhaseId && selectedPhaseId !== "all"
+      ? compilePhaseToMarkdown(board, selectedPhaseId)
+      : prdFormat === "prd"
       ? compileBoardToPRD(board)
       : prdFormat === "prompt"
       ? compileBoardToAIPrompt(board)
       : JSON.stringify(board, null, 2);
 
-  const handleDownloadFile = (ext: "md" | "json") => {
+  const handleDownloadFile = (
+    ext: "md" | "json",
+    customContent?: string,
+    customFilename?: string
+  ) => {
     const content =
-      ext === "md" ? compiledOutput : JSON.stringify(board, null, 2);
+      customContent ||
+      (ext === "md" ? compiledOutput : JSON.stringify(board, null, 2));
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${board.id || "escopo-briefing"}.${ext}`;
+    a.download = `${customFilename || board.id || "escopo-briefing"}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -257,7 +284,7 @@ export function RightDossierDrawer({
           }`}
         >
           <Cloud className="w-3.5 h-3.5 mb-1" />
-          <span>Link & DB</span>
+          <span>Projetos</span>
         </button>
       </div>
 
@@ -342,18 +369,93 @@ export function RightDossierDrawer({
                   </div>
                 </div>
 
+                {/* Export by Phase Shortcut Card */}
+                {sectionNodes.length > 0 && (
+                  <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-2.5">
+                    <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#1B4DFF]" />
+                      Exportar Fase para IA (.MD)
+                    </h3>
+                    <p className="text-[12px] text-[#4A4D55]">
+                      Gere o arquivo `.md` apenas com as telas, fluxos e regras de uma Fase específica para pedir à IA que construa um módulo por vez:
+                    </p>
+                    <div className="space-y-1.5">
+                      {sectionNodes.map((sec) => {
+                        const itemsInPhase = getNodesInSection(board.nodes, sec);
+                        return (
+                          <div
+                            key={sec.id}
+                            className="p-2.5 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[8px] space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-[10.5px] font-bold px-1.5 py-0.5 bg-[#16181D] text-[#FAF8F4] rounded-[3px]">
+                                {sec.data.code}
+                              </span>
+                              <span className="text-[12px] font-semibold text-[#16181D] flex-1 truncate">
+                                {sec.data.title}
+                              </span>
+                              <span className="font-mono text-[10px] text-[#4A4D55] shrink-0">
+                                {itemsInPhase.length} bloco(s)
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const md = compilePhaseToMarkdown(
+                                    board,
+                                    sec.id
+                                  );
+                                  triggerCopy(`phase-${sec.id}`, md);
+                                }}
+                                className="py-1.5 px-2 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                              >
+                                {copiedKey === `phase-${sec.id}` ? (
+                                  <>
+                                    <Check className="w-3 h-3" />
+                                    Copiado!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    Copiar Prompt
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const md = compilePhaseToMarkdown(
+                                    board,
+                                    sec.id
+                                  );
+                                  const slug = `${board.id}-${(
+                                    sec.data.code || "fase"
+                                  ).toLowerCase()}`;
+                                  handleDownloadFile("md", md, slug);
+                                }}
+                                className="py-1.5 px-2 bg-[#FAF8F4] hover:bg-[#EFECE4] text-[#16181D] border border-[#16181D] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                              >
+                                <Download className="w-3 h-3" />
+                                Baixar .MD
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Quick Inventory List */}
                 <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[13px] font-bold text-[#16181D] flex items-center gap-1.5">
+                    <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-[#1B4DFF]" />
                       Índice de Blocos no Canvas ({board.nodes.length})
                     </h3>
                   </div>
-                  <p className="text-[11.5px] text-[#4A4D55]">
-                    Clique em qualquer bloco no canvas ou na lista abaixo para detalhar campos de tela, regras de negócio e critérios de aceite.
-                  </p>
-                  <div className="max-h-[260px] overflow-y-auto divide-y divide-[#D8D3C8] border border-[#D8D3C8] rounded-[8px] bg-[#F6F3EC]">
+                  <div className="max-h-[220px] overflow-y-auto divide-y divide-[#D8D3C8] border border-[#D8D3C8] rounded-[8px] bg-[#F6F3EC]">
                     {board.nodes
                       .filter((n) => n.data.category !== "section")
                       .map((node) => (
@@ -506,7 +608,7 @@ export function RightDossierDrawer({
                     {selectedNode.data.category !== "section" && (
                       <div>
                         <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
-                          STATUS NA REUNIÃO
+                           STATUS NA REUNIÃO
                         </label>
                         <div className="grid grid-cols-3 gap-1.5">
                           {(["rascunho", "validado", "duvida"] as const).map(
@@ -659,40 +761,113 @@ export function RightDossierDrawer({
                       </div>
                     )}
 
-                    {/* Section dimensions */}
+                    {/* Section dimensions + Phase Export */}
                     {selectedNode.data.category === "section" && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
-                            LARGURA (PX)
-                          </label>
-                          <input
-                            type="number"
-                            step={20}
-                            value={selectedNode.data.sectionWidth || 580}
-                            onChange={(e) =>
-                              onUpdateNodeData(selectedNode.id, {
-                                sectionWidth: Number(e.target.value) || 580,
-                              })
-                            }
-                            className="w-full px-2 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
-                          />
+                      <div className="space-y-3 pt-1">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                              LARGURA (PX)
+                            </label>
+                            <input
+                              type="number"
+                              step={20}
+                              value={selectedNode.data.sectionWidth || 580}
+                              onChange={(e) =>
+                                onUpdateNodeData(selectedNode.id, {
+                                  sectionWidth: Number(e.target.value) || 580,
+                                })
+                              }
+                              className="w-full px-2 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                              ALTURA (PX)
+                            </label>
+                            <input
+                              type="number"
+                              step={20}
+                              value={selectedNode.data.sectionHeight || 560}
+                              onChange={(e) =>
+                                onUpdateNodeData(selectedNode.id, {
+                                  sectionHeight: Number(e.target.value) || 560,
+                                })
+                              }
+                              className="w-full px-2 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
-                            ALTURA (PX)
-                          </label>
-                          <input
-                            type="number"
-                            step={20}
-                            value={selectedNode.data.sectionHeight || 560}
-                            onChange={(e) =>
-                              onUpdateNodeData(selectedNode.id, {
-                                sectionHeight: Number(e.target.value) || 560,
-                              })
-                            }
-                            className="w-full px-2 py-1.5 font-mono text-[12px] bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px]"
-                          />
+
+                        {/* Phase Export Card inside Section Inspector */}
+                        <div className="p-3 bg-[#F6F3EC] border border-[#16181D] rounded-[8px] space-y-2">
+                          <p className="text-[12px] font-bold text-[#16181D]">
+                            Itens dentro desta Fase (
+                            {getNodesInSection(board.nodes, selectedNode).length}
+                            )
+                          </p>
+                          <div className="max-h-[140px] overflow-y-auto space-y-1">
+                            {getNodesInSection(board.nodes, selectedNode).map(
+                              (child) => (
+                                <div
+                                  key={child.id}
+                                  className="px-2 py-1 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[4px] flex items-center justify-between text-[11px]"
+                                >
+                                  <span className="font-mono font-semibold text-[#1B4DFF]">
+                                    {child.data.code}
+                                  </span>
+                                  <span className="truncate ml-2 flex-1 text-[#16181D]">
+                                    {child.data.title}
+                                  </span>
+                                </div>
+                              )
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const md = compilePhaseToMarkdown(
+                                  board,
+                                  selectedNode.id
+                                );
+                                triggerCopy("phase-insp", md);
+                              }}
+                              className="py-1.5 px-2 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                            >
+                              {copiedKey === "phase-insp" ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  Copiado!
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-3 h-3" />
+                                  Prompt IA Fase
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const md = compilePhaseToMarkdown(
+                                  board,
+                                  selectedNode.id
+                                );
+                                handleDownloadFile(
+                                  "md",
+                                  md,
+                                  `${board.id}-${(
+                                    selectedNode.data.code || "fase"
+                                  ).toLowerCase()}`
+                                );
+                              }}
+                              className="py-1.5 px-2 bg-[#16181D] text-[#FAF8F4] rounded-[6px] font-mono text-[10.5px] font-semibold flex items-center justify-center gap-1"
+                            >
+                              <Download className="w-3 h-3" />
+                              Baixar .MD
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -703,7 +878,7 @@ export function RightDossierDrawer({
                 {(selectedNode.data.category === "screen" ||
                   selectedNode.data.category === "database") && (
                   <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-2.5">
-                    <h3 className="text-[13px] font-bold text-[#16181D]">
+                    <h3 className="text-[13.5px] font-bold text-[#16181D]">
                       {selectedNode.data.category === "screen"
                         ? "Componentes & Campos da Tela"
                         : "Colunas da Tabela"}
@@ -716,7 +891,7 @@ export function RightDossierDrawer({
                           className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-[#F6F3EC] border border-[#D8D3C8] rounded-[6px] text-[12px]"
                         >
                           <div className="flex items-center gap-2 truncate">
-                            <span className="font-mono text-[9.5px] uppercase px-1.5 py-0.5 bg-[#EFECE4] border border-[#D8D3C8] rounded-[3px] text-[#4A4D55]">
+                            <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 bg-[#EFECE4] border border-[#D8D3C8] rounded-[3px] text-[#4A4D55]">
                               {f.kind}
                             </span>
                             <span className="truncate font-medium text-[#16181D]">
@@ -781,7 +956,7 @@ export function RightDossierDrawer({
                 {selectedNode.data.category !== "section" &&
                   selectedNode.data.category !== "sticky" && (
                     <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-2.5">
-                      <h3 className="text-[13px] font-bold text-[#16181D]">
+                      <h3 className="text-[13.5px] font-bold text-[#16181D]">
                         Regras de Negócio & Critérios de Aceite
                       </h3>
 
@@ -837,59 +1012,82 @@ export function RightDossierDrawer({
           </>
         )}
 
-        {/* TAB 2: PRD & SCOPE COMPILER */}
+        {/* TAB 2: PRD & SCOPE COMPILER (WITH PHASE FILTER) */}
         {activeTab === "prd" && (
           <div className="space-y-3">
             <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-[14px] font-bold text-[#16181D]">
-                  Compilador Automático de Escopo
+                  Compilador de Escopo & Prompt IA
                 </h2>
                 <span className="font-mono text-[10px] px-2 py-0.5 bg-[#E8EEFF] text-[#1438B8] border border-[#B8CAFF] rounded-[4px] font-semibold">
                   AO VIVO
                 </span>
               </div>
-              <p className="text-[12px] text-[#4A4D55] leading-relaxed">
-                Cada tela, decisão, API, tabela e conexão desenhada no canvas é compilada em tempo real em documentação técnica ou prompt para desenvolvimento.
-              </p>
 
-              {/* Format Switcher */}
-              <div className="grid grid-cols-3 gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setPrdFormat("prd")}
-                  className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
-                    prdFormat === "prd"
-                      ? "bg-[#16181D] text-[#FAF8F4] border-[#16181D] font-semibold"
-                      : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
-                  }`}
+              {/* Phase Scope Selector */}
+              <div>
+                <label className="block font-mono text-[10.5px] text-[#4A4D55] mb-1">
+                  RECORTAR ESCOPO POR FASE (OU PROJETO COMPLETO)
+                </label>
+                <select
+                  value={selectedPhaseId}
+                  onChange={(e) => setSelectedPhaseId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 font-mono text-[11px] bg-[#F6F3EC] border border-[#16181D] rounded-[6px] text-[#16181D]"
                 >
-                  PRD Markdown
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrdFormat("prompt")}
-                  className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border flex items-center justify-center gap-1 ${
-                    prdFormat === "prompt"
-                      ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
-                      : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
-                  }`}
-                >
-                  <Sparkles className="w-3 h-3" />
-                  Prompt Dev
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrdFormat("json")}
-                  className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
-                    prdFormat === "json"
-                      ? "bg-[#16181D] text-[#FAF8F4] border-[#16181D] font-semibold"
-                      : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
-                  }`}
-                >
-                  JSON Grafo
-                </button>
+                  <option value="all">
+                    ★ Projeto Completo ({board.nodes.length} blocos)
+                  </option>
+                  {sectionNodes.map((sec) => {
+                    const count = getNodesInSection(board.nodes, sec).length;
+                    return (
+                      <option key={sec.id} value={sec.id}>
+                        Apenas [{sec.data.code}] {sec.data.title} ({count} blocos)
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
+
+              {/* Format Switcher (when full board is selected) */}
+              {selectedPhaseId === "all" && (
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPrdFormat("prd")}
+                    className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
+                      prdFormat === "prd"
+                        ? "bg-[#16181D] text-[#FAF8F4] border-[#16181D] font-semibold"
+                        : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
+                    }`}
+                  >
+                    PRD Markdown
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrdFormat("prompt")}
+                    className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border flex items-center justify-center gap-1 ${
+                      prdFormat === "prompt"
+                        ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                        : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Prompt Dev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrdFormat("json")}
+                    className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
+                      prdFormat === "json"
+                        ? "bg-[#16181D] text-[#FAF8F4] border-[#16181D] font-semibold"
+                        : "bg-[#F6F3EC] text-[#16181D] border-[#D8D3C8]"
+                    }`}
+                  >
+                    JSON Grafo
+                  </button>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2 pt-1">
@@ -906,19 +1104,36 @@ export function RightDossierDrawer({
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      Copiar Texto
+                      Copiar Markdown / Prompt
                     </>
                   )}
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    handleDownloadFile(prdFormat === "json" ? "json" : "md")
-                  }
+                  onClick={() => {
+                    const phaseNode = sectionNodes.find(
+                      (s) => s.id === selectedPhaseId
+                    );
+                    const fname = phaseNode
+                      ? `${board.id}-${(
+                          phaseNode.data.code || "fase"
+                        ).toLowerCase()}`
+                      : board.id;
+                    handleDownloadFile(
+                      selectedPhaseId === "all" && prdFormat === "json"
+                        ? "json"
+                        : "md",
+                      compiledOutput,
+                      fname
+                    );
+                  }}
                   className="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-[#FAF8F4] hover:bg-[#EFECE4] text-[#16181D] border border-[#16181D] text-[12px] font-semibold rounded-[8px]"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Baixar .{prdFormat === "json" ? "json" : "md"}
+                  Baixar .
+                  {selectedPhaseId === "all" && prdFormat === "json"
+                    ? "json"
+                    : "md"}
                 </button>
               </div>
             </div>
@@ -926,7 +1141,12 @@ export function RightDossierDrawer({
             {/* Live Preview Box */}
             <div className="p-3 bg-[#16181D] text-[#F6F3EC] rounded-[12px] border border-[#16181D]">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/15 font-mono text-[10.5px] text-[#A0A4B0]">
-                <span>PREVIEW · {prdFormat.toUpperCase()}</span>
+                <span>
+                  PREVIEW ·{" "}
+                  {selectedPhaseId === "all"
+                    ? prdFormat.toUpperCase()
+                    : "ESCOPO DA FASE (.MD)"}
+                </span>
                 <span>{compiledOutput.split("\n").length} linhas</span>
               </div>
               <pre className="font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words max-h-[430px] overflow-y-auto text-[#EFECE4]">
@@ -973,7 +1193,7 @@ export function RightDossierDrawer({
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-[13px] font-bold text-[#16181D]">
+              <h3 className="text-[13.5px] font-bold text-[#16181D]">
                 Histórico de Revisão ({allComments.length})
               </h3>
               {allComments.length === 0 ? (
@@ -1012,7 +1232,7 @@ export function RightDossierDrawer({
                         {item.resolved ? "✓ Resolvido" : "Marcar Resolvido"}
                       </button>
                     </div>
-                    <p className="text-[12.5px] text-[#16181D] leading-relaxed">
+                    <p className="text-[12px] text-[#16181D] leading-relaxed">
                       &ldquo;{item.text}&rdquo;
                     </p>
                     <div className="flex items-center justify-between font-mono text-[10px] text-[#4A4D55]">
@@ -1026,35 +1246,89 @@ export function RightDossierDrawer({
           </div>
         )}
 
-        {/* TAB 4: CLOUD SUPABASE & SHARE LINKS */}
+        {/* TAB 4: SAVED PROJECTS GALLERY + CLOUD SUPABASE & SHARE LINKS */}
         {activeTab === "cloud" && (
           <div className="space-y-4">
-            {/* Share Links Card */}
+            {/* Saved Projects Gallery Card */}
             <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-[14px] font-bold text-[#16181D] flex items-center gap-1.5">
-                  <Share2 className="w-4 h-4 text-[#1B4DFF]" />
-                  Link Compartilhável com o Cliente
+                  <FolderOpen className="w-4 h-4 text-[#1B4DFF]" />
+                  Meus Projetos Salvos ({savedBoards.length})
                 </h2>
               </div>
 
               <p className="text-[12px] text-[#4A4D55] leading-relaxed">
-                Salve o projeto e envie o link abaixo para o cliente visualizar a jornada e comentar diretamente em cada tela sem risco de apagar blocos acidentalmente.
+                Seus projetos são salvos em <strong>3 lugares</strong>: em tempo real no navegador (<code>localStorage</code>), no disco do servidor (<code>.data/boards.json</code>) e na nuvem Supabase (<code>{SUPABASE_PROJECT_REF}</code>).
               </p>
 
-              <button
-                type="button"
-                onClick={onSaveCloud}
-                disabled={isSaving}
-                className="w-full py-2 px-3 bg-[#0F766E] hover:bg-[#115E59] text-[#FAF8F4] text-[12.5px] font-semibold rounded-[8px] flex items-center justify-center gap-2 transition-colors"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {isSaving
-                  ? "Sincronizando..."
-                  : "Salvar Snapshot & Atualizar Link"}
-              </button>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={onSaveCloud}
+                  disabled={isSaving}
+                  className="py-2 px-2.5 bg-[#0F766E] hover:bg-[#115E59] text-[#FAF8F4] text-[12px] font-semibold rounded-[8px] flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{isSaving ? "Salvando..." : "Salvar Atual"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onSaveAsNewProject}
+                  className="py-2 px-2.5 bg-[#16181D] hover:bg-[#1B4DFF] text-[#FAF8F4] text-[12px] font-semibold rounded-[8px] flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <FilePlus2 className="w-3.5 h-3.5" />
+                  <span>Salvar Novo</span>
+                </button>
+              </div>
 
-              <div className="space-y-2 pt-1">
+              <div className="max-h-[210px] overflow-y-auto divide-y divide-[#D8D3C8] border border-[#D8D3C8] rounded-[8px] bg-[#F6F3EC]">
+                {savedBoards.map((item) => {
+                  const isCurrent = item.id === board.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-2.5 flex items-center justify-between gap-2 ${
+                        isCurrent ? "bg-[#E8EEFF]/60" : "hover:bg-[#EFECE4]"
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-bold text-[#16181D] truncate">
+                            {item.title}
+                          </span>
+                          {isCurrent && (
+                            <span className="font-mono text-[9.5px] px-1.5 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[3px] shrink-0">
+                              ABERTO
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-mono text-[10px] text-[#4A4D55] truncate">
+                          Cliente: {item.clientName} · {item.nodes?.length || 0}{" "}
+                          blocos
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onLoadProject(item)}
+                        className="px-2.5 py-1 bg-[#FAF8F4] hover:bg-[#16181D] text-[#16181D] hover:text-[#FAF8F4] border border-[#16181D] rounded-[6px] font-mono text-[10.5px] font-semibold shrink-0 transition-colors"
+                      >
+                        Abrir
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Share Links Card */}
+            <div className="p-3.5 bg-[#FAF8F4] border border-[#16181D] rounded-[12px] space-y-3">
+              <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
+                <Share2 className="w-4 h-4 text-[#1B4DFF]" />
+                Links de Acesso & Compartilhamento
+              </h3>
+
+              <div className="space-y-2">
                 <div>
                   <label className="block font-mono text-[10px] text-[#4A4D55] mb-1">
                     LINK MODO CLIENTE (LEITURA + COMENTÁRIOS)
@@ -1078,7 +1352,7 @@ export function RightDossierDrawer({
 
                 <div>
                   <label className="block font-mono text-[10px] text-[#4A4D55] mb-1">
-                    LINK EDIÇÃO COMPLETA (EQUIPE)
+                    LINK DIRETO PARA ABRIR ESTE PROJETO DEPOIS
                   </label>
                   <div className="flex gap-1.5">
                     <input
@@ -1102,7 +1376,7 @@ export function RightDossierDrawer({
             {/* Supabase Project Connection Card */}
             <div className="p-3.5 bg-[#FAF8F4] border border-[#D8D3C8] rounded-[12px] space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-[13px] font-bold text-[#16181D] flex items-center gap-1.5">
+                <h3 className="text-[13.5px] font-bold text-[#16181D] flex items-center gap-1.5">
                   <Database className="w-3.5 h-3.5 text-[#0F766E]" />
                   Supabase ({SUPABASE_PROJECT_REF})
                 </h3>
@@ -1118,14 +1392,6 @@ export function RightDossierDrawer({
                     : "STORE LOCAL + NUVEM"}
                 </span>
               </div>
-
-              <p className="text-[11.5px] text-[#4A4D55] leading-relaxed">
-                Conectado ao projeto{" "}
-                <code className="font-mono text-[#16181D]">
-                  {SUPABASE_PROJECT_REF}.supabase.co
-                </code>
-                . Enquanto a chave Anon ou a tabela não estiverem preenchidas, seus quadros são salvos automaticamente no servidor local (`.data/boards.json`).
-              </p>
 
               <div>
                 <label className="block font-mono text-[10px] text-[#4A4D55] mb-1">
