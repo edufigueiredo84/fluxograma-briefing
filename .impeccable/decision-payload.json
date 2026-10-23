@@ -1,0 +1,248 @@
+{
+  "title": "Escolha a direção visual do seu Estúdio de Fluxograma & Briefing",
+  "question": "O sorteio designou 'Bancada de Patch Modular'. Você pode seguir com ela, escolher a recomendação principal ('Blueprint & Cartografia de Produto'), adotar uma alternativa ou seguir o padrão clássico de mercado.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Bancada de Patch Modular (Patchbay Studio)",
+      "kicker": "THE ROLL",
+      "lineage": "Sintetizadores modulares Eurorack e painéis de roteamento de sinal",
+      "thesis": "Cada tela, regra e API funciona como um módulo de hardware com portas de entrada/saída explícitas e cabos de conexão tátil.",
+      "palette": [
+        "#E8E6E1",
+        "#18191C",
+        "#E54D2E",
+        "#1B4DFF",
+        "#0F9D58"
+      ],
+      "materials": [
+        "painel de alumínio anodizado fosco",
+        "serigrafia técnica de alto contraste",
+        "conectores jack codificados por cor"
+      ],
+      "viewport": "Canvas infinito em tom alumínio quente com módulos de produto encaixados, portas de entrada/saída numeradas, dock de instrumentos na base e compilador de PRD em painel técnico lateral.",
+      "risk": "Pode parecer mais técnico para clientes leigos se os rótulos não forem simples.",
+      "raised": [
+        {
+          "from": "challenger-ikeda",
+          "raise": "Telemetria tabular de alta precisão nos cabeçalhos de cada nó (IDs automáticos de tela e contagem de requisitos)."
+        },
+        {
+          "from": "challenger-catalog",
+          "raise": "Faixa de cor semântica imediata por categoria de bloco (Tela, Ação, Decisão, API, Banco) visível mesmo com zoom distante."
+        },
+        {
+          "from": "challenger-emigre",
+          "raise": "Escala tipográfica travada para leitura perfeita tanto em 50% quanto em 150% de zoom."
+        }
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.webp",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Barra do Projeto + Link Cliente + Exportar PRD", "x": 0, "y": 0, "w": 12, "h": 1, "accent": false },
+          { "label": "Paleta de Blocos Semânticos & Post-its", "x": 0, "y": 1, "w": 2, "h": 9, "accent": false },
+          { "label": "Canvas de Jornada (Módulos + Conectores)", "x": 2, "y": 1, "w": 7, "h": 9, "accent": true },
+          { "label": "Inspetor & Compilador de Escopo/PRD Ao Vivo", "x": 9, "y": 1, "w": 3, "h": 9, "accent": false }
+        ]
+      }
+    },
+    {
+      "id": "model-pick",
+      "label": "Blueprint & Cartografia de Produto (Drafting Studio)",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Mesas de desenho arquitetônico, papel vegetal técnico e cadernos de especificação",
+      "thesis": "Une a leveza de um quadro de post-its de briefing com a precisão de uma planta arquitetônica que já nasce como documento de escopo.",
+      "palette": [
+        "#F6F3EC",
+        "#16181D",
+        "#1B4DFF",
+        "#D9381E",
+        "#F5C542"
+      ],
+      "materials": [
+        "papel vellum creme técnico",
+        "tinta nanquim 1px",
+        "azul cobalto de engenharia e post-its âmbar"
+      ],
+      "viewport": "Quadro claro com grade pontilhada arquitetônica, blocos de tela com mini-wireframes internos, post-its táteis e dossiê de escopo PRD retrátil à direita.",
+      "risk": "É a direção mais natural para ferramentas de arquitetura de produto, portanto mais familiar.",
+      "comp": ".impeccable/mocks/decision/model-pick.webp",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Carimbo do Projeto + Templates + Compartilhar", "x": 0, "y": 0, "w": 12, "h": 1, "accent": false },
+          { "label": "Canvas Arquitetônico de Jornadas & Post-its", "x": 0, "y": 1, "w": 8, "h": 8, "accent": true },
+          { "label": "Dock Rápido de Reunião (Teclas 1-9)", "x": 2, "y": 9, "w": 4, "h": 1, "accent": true },
+          { "label": "Dossiê PRD & Inspetor de Requisitos", "x": 8, "y": 1, "w": 4, "h": 9, "accent": false }
+        ]
+      }
+    },
+    {
+      "id": "challenger-orienteering",
+      "label": "Mapa de Curso & Jornada Numerada (Orienteering Course)",
+      "verdict": "competitive",
+      "lineage": "Mapas de orientação ISO com rota numerada sobre zonas de terreno",
+      "thesis": "A jornada principal do usuário corre como uma linha mestra púrpura numerada (1 → 2 → 3) sobre zonas de domínio do sistema (CRM, Financeiro, Admin).",
+      "palette": [
+        "#FBF9F5",
+        "#7B2CBF",
+        "#2D6A4F",
+        "#D97706",
+        "#1E293B"
+      ],
+      "materials": [
+        "zonas de domínio sombreadas",
+        "rota mestra numerada em púrpura",
+        "tabela codificada de pontos de controle"
+      ],
+      "viewport": "Zonas de módulo ao fundo com a trilha numerada da jornada em destaque e tabela lateral de pontos de controle.",
+      "case": "Excelente para reuniões com clientes pois numera automaticamente o passo-a-passo da jornada.",
+      "risk": "Fluxos muito ramificados podem exigir múltiplas rotas coloridas.",
+      "comp": ".impeccable/mocks/decision/challenger-orienteering.webp",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-orienteering-map-hero.webp"
+    },
+    {
+      "id": "challenger-ticket-wallet",
+      "label": "Carteira de Itinerário & Cupons de Etapa (Ticket Wallet)",
+      "verdict": "competitive",
+      "lineage": "Carteiras de bilhetes aéreos clássicos com cupons destacáveis e carimbos de status",
+      "thesis": "Cada tela ou etapa da jornada é um bilhete numerado com campos estruturados e carimbos visuais de escopo (MVP, FASE 2, APROVADO).",
+      "palette": [
+        "#F4F1EA",
+        "#1B2A4A",
+        "#D62828",
+        "#5E35B1",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "papel de bilhete perfurado",
+        "carimbos de aprovação em vermelho/azul",
+        "tabelas de campos em fio 1px"
+      ],
+      "viewport": "Fluxo de cartões estilo bilhete de embarque conectados por rotas curvas, com carimbos visíveis de prioridade MVP.",
+      "case": "Torna o status de aprovação e faseamento do escopo tangível durante a reunião.",
+      "risk": "Estética mais editorial do que de software tradicional.",
+      "comp": ".impeccable/mocks/decision/challenger-ticket-wallet.webp",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-jet-age-ticket-wallet-hero.webp"
+    },
+    {
+      "id": "challenger-centre-rail",
+      "label": "Trilho Central de Especificação (Ruling Engine)",
+      "verdict": "competitive",
+      "lineage": "Edições técnicas de referência com trilho central de chaves e margens de anotação",
+      "thesis": "Conecta diretamente cada bloco do fluxograma a um trilho indexado de regras de negócio com linhas de chamada de 1px.",
+      "palette": [
+        "#F3EFE6",
+        "#141413",
+        "#C83E2B"
+      ],
+      "materials": [
+        "papel osso sem branqueamento",
+        "fios de 1px de precisão",
+        "chaves de referência em vermelhão"
+      ],
+      "viewport": "Canvas à esquerda ligado por fios de chamada a uma coluna de especificação técnica contínua.",
+      "case": "Forte integração entre o diagrama visual e o texto de regras de negócio.",
+      "risk": "Menos colorido para post-its de brainstorming livre.",
+      "comp": ".impeccable/mocks/decision/challenger-centre-rail.webp",
+      "hero": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting-hero.webp"
+    },
+    {
+      "id": "challenger-ikeda",
+      "label": "Datamatics P&B",
+      "verdict": "declined",
+      "lineage": "Campos de dados monocromáticos de Ryoji Ikeda",
+      "thesis": "Telemetria pura em preto e branco com colunas de código de barras.",
+      "palette": [
+        "#000000",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "barras monocromáticas 1px",
+        "tipografia monoespaçada densa"
+      ],
+      "viewport": "Grade preta e branca de alta densidade.",
+      "case": "Recusado: falta distinção cromática para diferenciar telas, decisões, APIs e post-its em chamadas ao vivo.",
+      "kept": "Telemetria numérica tabular nos cabeçalhos dos nós.",
+      "risk": "Difícil leitura para clientes não-técnicos.",
+      "hero": "https://impeccable.style/worlds/cards/ikeda-datamatics-hero.webp"
+    },
+    {
+      "id": "challenger-catalog",
+      "label": "Catálogo Pastel de Mascotes",
+      "verdict": "declined",
+      "lineage": "Catálogos japoneses de personagens em grade pastel",
+      "thesis": "Grade de cartões arredondados com fitas coloridas.",
+      "palette": [
+        "#FFF0F5",
+        "#FF6B8B",
+        "#7BDFF2",
+        "#B2F7EF"
+      ],
+      "materials": [
+        "fundos pastel",
+        "fitas saturadas"
+      ],
+      "viewport": "Grade de cartões colecionáveis.",
+      "case": "Recusado: inadequado para reuniões corporativas de arquitetura de CRM e escopo técnico.",
+      "kept": "Fita de cor semântica imediata por categoria de bloco.",
+      "risk": "Tom infantil para consultoria de software.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-character-goods-catalog-hero.webp"
+    },
+    {
+      "id": "challenger-emigre",
+      "label": "Espécime Bitmap Emigre",
+      "verdict": "declined",
+      "lineage": "Tipografia bitmap de baixa resolução em escala de pôster",
+      "thesis": "Títulos pixelados sobre colunas justificadas.",
+      "palette": [
+        "#F5F5F0",
+        "#111111",
+        "#FF3300"
+      ],
+      "materials": [
+        "fontes bitmap",
+        "retícula meio-tom"
+      ],
+      "viewport": "Pôster tipográfico em pixels visíveis.",
+      "case": "Recusado: fontes bitmap prejudicam a legibilidade em nós pequenos durante o zoom do fluxograma.",
+      "kept": "Escala de zoom travada em múltiplos nítidos.",
+      "risk": "Baixa legibilidade em diagramas densos.",
+      "hero": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "Whiteboard SaaS Moderno (Estilo FigJam / Linear)",
+    "thesis": "A interface limpa, familiar e direta que todo cliente reconhece imediatamente.",
+    "palette": [
+      "#F8FAFC",
+      "#0F172A",
+      "#4F46E5",
+      "#10B981",
+      "#F59E0B"
+    ],
+    "materials": [
+      "canvas pontilhado neutro",
+      "painéis flutuantes com bordas suaves",
+      "blocos coloridos semânticos de alta legibilidade"
+    ],
+    "viewport": "Canvas infinito estilo FigJam/Miro com barra inferior de ferramentas, nós de produto coloridos e gaveta de PRD lateral.",
+    "risk": "Visual mais próximo das ferramentas convencionais de mercado.",
+    "comp": ".impeccable/mocks/decision/canon.webp"
+  },
+  "steer": true
+}

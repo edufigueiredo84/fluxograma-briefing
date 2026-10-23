@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+:root {
+  --bg-vellum: #F6F3EC;
+  --bg-panel: #EFECE4;
+  --bg-card: #FAF8F4;
+  --ink-primary: #16181D;
+  --ink-secondary: #4A4D55;
+  --rule-hairline: #D8D3C8;
+  --accent-cobalt: #1B4DFF;
+  --accent-vermilion: #D9381E;
+  --accent-emerald: #0F766E;
+  --accent-violet: #6D28D9;
+  --accent-amber: #F5C542;
+}
+
+* {
+  box-sizing: border-box;
+  caret-color: var(--accent-cobalt);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-vellum);
+  color: var(--ink-primary);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: var(--accent-cobalt);
+  color: var(--bg-card);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-cobalt);
+  outline-offset: 2px;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-panel);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #B8B1A2;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8C8577;
+}
+
+/* React Flow Controls & Edges Theme */
+.react-flow__controls-button {
+  background-color: var(--bg-card) !important;
+  border-bottom: 1px solid var(--rule-hairline) !important;
+  color: var(--ink-primary) !important;
+  fill: var(--ink-primary) !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--bg-panel) !important;
+}
+
+.react-flow__edge-path {
+  transition: stroke 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}

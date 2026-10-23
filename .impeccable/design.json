@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-23T16:38:00-03:00",
+  "title": "Design System: Planta · Estúdio de Fluxograma, Briefing & Jornadas de Produto",
+  "extensions": {
+    "colorMeta": {
+      "blueprint-cobalt": {
+        "role": "primary",
+        "displayName": "Blueprint Cobalt",
+        "canonical": "#1B4DFF",
+        "tonalRamp": ["#091952", "#0E2780", "#1438B8", "#1B4DFF", "#4D73FF", "#809BFF", "#B8CAFF", "#E8EEFF"]
+      },
+      "revision-vermilion": {
+        "role": "secondary",
+        "displayName": "Revision Vermilion",
+        "canonical": "#D9381E",
+        "tonalRamp": ["#4A1209", "#7A1E10", "#B42318", "#D9381E", "#E6634E", "#F09284", "#F5B8B4", "#FEF0EE"]
+      },
+      "archival-emerald": {
+        "role": "secondary",
+        "displayName": "Archival Emerald",
+        "canonical": "#0F766E",
+        "tonalRamp": ["#062E2B", "#0B4F4A", "#0F766E", "#149E93", "#2B8AC", "#6CD4CA", "#A7DCD2", "#E6F4F1"]
+      },
+      "vellum-ground": {
+        "role": "neutral",
+        "displayName": "Vellum Ground",
+        "canonical": "#F6F3EC",
+        "tonalRamp": ["#16181D", "#2E3038", "#4A4D55", "#8C8577", "#B8B1A2", "#D8D3C8", "#EFECE4", "#F6F3EC"]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Títulos do carimbo de projeto, seções do inspetor e cabeçalhos de fases."
+      },
+      "title": {
+        "displayName": "Node Title",
+        "purpose": "Títulos principais dentro de cada bloco do fluxograma."
+      },
+      "body": {
+        "displayName": "Body Copy",
+        "purpose": "Subtítulos explicativos, regras de negócio e comentários de clientes."
+      },
+      "label": {
+        "displayName": "Technical Mono Label",
+        "purpose": "Códigos tabulares de blocos (SCR-01, DEC-02), rotas e badges."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ease-out-drafting",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Transição suave de conexões e estados de seleção."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Action Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Botão de ação principal em Azul Cobalto para compilação de PRD e criação de telas.",
+      "html": "<button class=\"ds-btn-primary\">Compilar PRD</button>",
+      "css": ".ds-btn-primary { background: #1B4DFF; color: #FAF8F4; padding: 6px 12px; border-radius: 8px; border: 1px solid #1438B8; font-family: var(--font-sans), sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { background: #1438B8; } .ds-btn-primary:focus-visible { outline: 2px solid #1B4DFF; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Drafting Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Botão técnico secundário com contorno em nanquim 1px.",
+      "html": "<button class=\"ds-btn-secondary\">Compartilhar Link</button>",
+      "css": ".ds-btn-secondary { background: #FAF8F4; color: #16181D; padding: 6px 12px; border-radius: 8px; border: 1px solid #16181D; font-family: var(--font-sans), sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: background-color 150ms ease; } .ds-btn-secondary:hover { background: #EFECE4; } .ds-btn-secondary:focus-visible { outline: 2px solid #1B4DFF; outline-offset: 2px; }"
+    },
+    {
+      "name": "Technical Field Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Campo de entrada para edição de propriedades de telas, rotas e regras de negócio.",
+      "html": "<input class=\"ds-input\" value=\"/crm/pipeline\" />",
+      "css": ".ds-input { background: #F6F3EC; color: #16181D; padding: 6px 10px; border-radius: 6px; border: 1px solid #D8D3C8; font-family: var(--font-mono), monospace; font-size: 12px; width: 220px; } .ds-input:focus { border-color: #1B4DFF; outline: 2px solid #1B4DFF; outline-offset: 1px; }"
+    },
+    {
+      "name": "Priority Badge Chip",
+      "kind": "chip",
+      "refersTo": "chip-mvp",
+      "description": "Etiqueta monoespaçada tabular para classificação de prioridade no escopo.",
+      "html": "<span class=\"ds-chip-mvp\">MVP · FASE 1</span>",
+      "css": ".ds-chip-mvp { display: inline-block; background: #E8EEFF; color: #1438B8; border: 1px solid #B8CAFF; border-radius: 4px; padding: 2px 6px; font-family: var(--font-mono), monospace; font-size: 10px; font-weight: 600; }"
+    },
+    {
+      "name": "Blueprint Screen Node Card",
+      "kind": "card",
+      "refersTo": "node-card",
+      "description": "Bloco semântico de tela com cabeçalho azul cobalto e mini-wireframe interno.",
+      "html": "<div class=\"ds-node-card\"><div class=\"ds-node-head\"><span>SCR-02</span><span>MVP</span></div><div class=\"ds-node-body\"><strong>Workspace Kanban</strong><div class=\"ds-wire\">Board Drag & Drop</div></div></div>",
+      "css": ".ds-node-card { width: 260px; background: #FAF8F4; border: 1px solid #16181D; border-radius: 12px; overflow: hidden; font-family: var(--font-sans), sans-serif; } .ds-node-head { background: #1B4DFF; color: #FAF8F4; padding: 6px 10px; display: flex; justify-content: space-between; font-family: var(--font-mono), monospace; font-size: 11px; font-weight: 600; border-bottom: 1px solid #16181D; } .ds-node-body { padding: 10px; color: #16181D; font-size: 13px; } .ds-wire { margin-top: 8px; padding: 6px 8px; background: #F6F3EC; border: 1px solid #D8D3C8; border-radius: 6px; font-size: 11px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Blueprint & Cartografia de Produto (Drafting Studio)",
+    "overview": "O sistema visual trata o mapeamento de fluxos e reuniões de briefing como uma mesa de desenho arquitetônico combinada a um caderno de especificações vivas. Em vez de um quadro branco vazio e genérico, o fundo em papel vellum técnico (#F6F3EC) com grade de precisão sustenta blocos semânticos com bordas de tinta nanquim (#16181D) e cabeçalhos codificados por função de engenharia.",
+    "keyCharacteristics": [
+      "Superfícies táteis inspiradas em papel vellum técnico (#F6F3EC), marfim de prancheta (#EFECE4) e cartão arquitetônico (#FAF8F4).",
+      "Semântica cromática imediata por categoria de bloco: Azul Cobalto para Telas, Vermelhão para Decisões, Âmbar/Ocre para Ações e Post-its, Violeta para APIs e Esmeralda para Banco de Dados.",
+      "Mini-wireframes esquemáticos renderizados dentro dos próprios blocos de tela no canvas.",
+      "Elevação estrutural declarada exclusivamente por linhas técnicas de 1px solid, sem sombras difusas fantasmas."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Header Rule",
+        "body": "Cada categoria de nó no fluxograma possui exatamente uma cor de cabeçalho semântico; nunca troque a cor de uma Tela (#1B4DFF) pela de uma Decisão (#D9381E).",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Code Rule",
+        "body": "Todo identificador de nó, contador e coordenada deve usar Azeret Mono com font-variant-numeric: tabular-nums.",
+        "section": "typography"
+      },
+      {
+        "name": "The Single-Elevation Rule",
+        "body": "Declare elevação apenas uma vez por elemento usando borda técnica de 1px solid #16181D (ou #D8D3C8 em subdivisões internas); nunca combine bordas com box-shadow difuso.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do exibir os componentes internos de cada tela (inputs, tabelas, KPIs, botões) diretamente no mini-wireframe do nó no canvas.",
+      "Do usar portas de saída separadas e rotuladas (SIM em #0F766E e NÃO em #D9381E) em todos os blocos de Decisão.",
+      "Do manter códigos tabulares automáticos (SCR-01, DEC-01, API-01) visíveis no topo de cada bloco para referência rápida em reuniões."
+    ],
+    "donts": [
+      "Don't usar subtítulos em caixa-alta (eyebrows/kickers) empilhados acima de títulos h1, h2 ou h3.",
+      "Don't aplicar border-left ou border-right colorida acima de 1px em cartões, alertas ou itens de lista.",
+      "Don't abrir janelas modais sobre o canvas para editar propriedades ou exportar o PRD; utilize sempre a gaveta lateral de Dossiê."
+    ]
+  }
+}
