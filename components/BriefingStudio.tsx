@@ -1093,7 +1093,7 @@ export function BriefingStudio() {
             {nodes.length === 0 && !isClientMode && (
               <Panel position="top-center" className="!mt-24">
                 <div className="p-5 bg-[#FAF8F4] border border-[#16181D] rounded-[14px] max-w-[420px] text-center space-y-3">
-                  <p className="text-[15px] font-bold text-[#16181D]">
+                  <p className="text-[14px] font-bold text-[#16181D]">
                     Canvas Limpo · Pronto para o Briefing
                   </p>
                   <p className="text-[12.5px] text-[#4A4D55] leading-relaxed">
