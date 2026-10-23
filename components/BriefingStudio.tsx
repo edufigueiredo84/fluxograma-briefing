@@ -37,6 +37,8 @@ import {
   PanelRightClose,
   PanelRightOpen,
   ArrowRight,
+  Eraser,
+  RotateCcw,
 } from "lucide-react";
 import { BRIEFING_NODE_TYPES } from "@/components/nodes/BriefingNodes";
 import {
@@ -137,6 +139,10 @@ export function BriefingStudio() {
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
   const [anonKey, setAnonKey] = useState("");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [undoSnapshot, setUndoSnapshot] = useState<{
+    nodes: BriefingNode[];
+    edges: BriefingEdge[];
+  } | null>(null);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -602,6 +608,9 @@ export function BriefingStudio() {
   const handleSelectTemplate = (templateKey: string) => {
     const tpl = BOARD_TEMPLATES[templateKey];
     if (!tpl) return;
+    if (nodes.length > 0) {
+      setUndoSnapshot({ nodes, edges });
+    }
     setBoardMeta({
       id: tpl.id,
       title: tpl.title,
@@ -616,6 +625,24 @@ export function BriefingStudio() {
     setSelectedNodeId(tpl.nodes.find((n) => n.type === "screen")?.id || null);
     showToast(`Template "${tpl.title}" carregado!`);
   };
+
+  const handleClearCanvas = useCallback(() => {
+    if (isClientMode || nodes.length === 0) return;
+    setUndoSnapshot({ nodes, edges });
+    setNodes([]);
+    setEdges([]);
+    setSelectedNodeId(null);
+    showToast("Tela limpa! Pronta para iniciar um novo fluxo do zero.");
+  }, [isClientMode, nodes, edges, setNodes, setEdges, showToast]);
+
+  const handleUndoClear = useCallback(() => {
+    if (!undoSnapshot) return;
+    setNodes(undoSnapshot.nodes);
+    setEdges(styleEdges(undoSnapshot.edges));
+    setSelectedNodeId(undoSnapshot.nodes[0]?.id || null);
+    setUndoSnapshot(null);
+    showToast("Fluxo anterior restaurado!");
+  }, [undoSnapshot, setNodes, setEdges, showToast]);
 
   const handleSaveCloud = async () => {
     setIsSaving(true);
@@ -768,8 +795,36 @@ export function BriefingStudio() {
           </form>
         )}
 
-        {/* Right: Mode Toggle + Export PRD + Share */}
+        {/* Right: Clear CTA + Mode Toggle + Export PRD + Share */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {!isClientMode && (
+            <>
+              {nodes.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleClearCanvas}
+                  title="Limpar todos os blocos da tela para começar do zero"
+                  className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[#FEF0EE] hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] flex items-center gap-1.5 transition-colors"
+                >
+                  <Eraser className="w-3.5 h-3.5" />
+                  <span>Limpar Tela</span>
+                </button>
+              ) : (
+                undoSnapshot && (
+                  <button
+                    type="button"
+                    onClick={handleUndoClear}
+                    title="Restaurar o fluxo anterior"
+                    className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[#FAF8F4] hover:bg-[#E5E0D5] text-[#16181D] border border-[#16181D] flex items-center gap-1.5 transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[#1B4DFF]" />
+                    <span>Desfazer Limpeza</span>
+                  </button>
+                )
+              )}
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => setIsClientMode((v) => !v)}
@@ -1015,6 +1070,63 @@ export function BriefingStudio() {
                     <Frame className="w-3.5 h-3.5" />
                     <span>+ Fase</span>
                   </button>
+
+                  {nodes.length > 0 && (
+                    <>
+                      <span className="h-5 w-[1px] bg-[#D8D3C8] mx-0.5 hidden sm:inline-block" />
+                      <button
+                        type="button"
+                        onClick={handleClearCanvas}
+                        title="Limpar toda a tela"
+                        className="px-2.5 py-1.5 rounded-[8px] bg-[#FEF0EE] hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
+                      >
+                        <Eraser className="w-3.5 h-3.5" />
+                        <span>Limpar</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </Panel>
+            )}
+
+            {/* Empty State Card when canvas is cleared */}
+            {nodes.length === 0 && !isClientMode && (
+              <Panel position="top-center" className="!mt-24">
+                <div className="p-5 bg-[#FAF8F4] border border-[#16181D] rounded-[14px] max-w-[420px] text-center space-y-3">
+                  <p className="text-[15px] font-bold text-[#16181D]">
+                    Canvas Limpo · Pronto para o Briefing
+                  </p>
+                  <p className="text-[12.5px] text-[#4A4D55] leading-relaxed">
+                    Comece adicionando a primeira tela da jornada do cliente ou digite o fluxo completo na barra de captura rápida no topo.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleAddBlock("screen")}
+                      className="px-3.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      <Monitor className="w-3.5 h-3.5" />
+                      <span>+ Criar 1ª Tela</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddBlock("sticky")}
+                      className="px-3.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      <StickyNote className="w-3.5 h-3.5" />
+                      <span>+ Adicionar Post-it</span>
+                    </button>
+                    {undoSnapshot && (
+                      <button
+                        type="button"
+                        onClick={handleUndoClear}
+                        className="px-3 py-2 rounded-[8px] bg-[#EFECE4] hover:bg-[#E2DDD2] text-[#16181D] border border-[#16181D] text-[12px] font-medium inline-flex items-center gap-1.5 transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Desfazer</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </Panel>
             )}
