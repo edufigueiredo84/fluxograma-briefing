@@ -2,30 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import type { BoardProject } from "@/lib/types";
-import { BOARD_TEMPLATES } from "@/lib/templates";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const BOARDS_FILE = path.join(DATA_DIR, "boards.json");
 
+const LEGACY_TEMPLATE_IDS = new Set([
+  "crm-b2b-v1",
+  "saas-onboarding-v1",
+  "aprovacao-financeira-v1",
+  "canvas-limpo-v1",
+]);
+
 async function readLocalStore(): Promise<Record<string, BoardProject>> {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
     const raw = await fs.readFile(BOARDS_FILE, "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    const initial: Record<string, BoardProject> = {
-      [BOARD_TEMPLATES["crm-funil"].id]: BOARD_TEMPLATES["crm-funil"],
-      [BOARD_TEMPLATES["saas-onboarding"].id]: BOARD_TEMPLATES["saas-onboarding"],
-      [BOARD_TEMPLATES["dashboard-aprovacao"].id]: BOARD_TEMPLATES["dashboard-aprovacao"],
-    };
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(BOARDS_FILE, JSON.stringify(initial, null, 2), "utf-8");
-    } catch {
-      // ignore read-only fs errors
+    const parsed = JSON.parse(raw) as Record<string, BoardProject>;
+    const filtered: Record<string, BoardProject> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (!LEGACY_TEMPLATE_IDS.has(k)) {
+        filtered[k] = v;
+      }
     }
-    return initial;
+    return filtered;
+  } catch {
+    return {};
   }
 }
 

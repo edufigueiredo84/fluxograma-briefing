@@ -23,6 +23,7 @@ import {
   ListFilter,
   Download,
   Sparkles,
+  Maximize2,
 } from "lucide-react";
 import type { BriefingNode, FlowNodeData, ScreenField } from "@/lib/types";
 
@@ -164,6 +165,24 @@ export function ScreenNode({ data, selected }: NodeProps<BriefingNode>) {
           >
             {prio.label}
           </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("briefing-screen-preview", {
+                    detail: { code: data.code },
+                  })
+                );
+              }
+            }}
+            title="Expandir protótipo wireframe desta tela"
+            aria-label="Expandir protótipo wireframe desta tela"
+            className="nodrag p-1 rounded-[4px] bg-[#1235B5] hover:bg-[#0D278A] text-[#FAF8F4] transition-colors"
+          >
+            <Maximize2 className="w-2.5 h-2.5" />
+          </button>
         </div>
       </div>
 
@@ -642,7 +661,7 @@ export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
 
   const triggerPhaseAction = (
     e: React.MouseEvent,
-    action: "download" | "copy-ai"
+    action: "download" | "copy-ai" | "approve-phase"
   ) => {
     e.stopPropagation();
     if (typeof window !== "undefined") {
@@ -673,24 +692,34 @@ export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => triggerPhaseAction(e, "approve-phase")}
+            title="Aprovar e validar todos os blocos desta Fase"
+            aria-label="Aprovar e validar todos os blocos desta Fase"
+            className="nodrag inline-flex items-center justify-center p-1.5 rounded-[5px] bg-[var(--bg-card)] hover:bg-[#0F766E] text-[#149E93] hover:text-[#FAF8F4] border border-[var(--rule-hairline)] transition-colors"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          </button>
           <button
             type="button"
             onClick={(e) => triggerPhaseAction(e, "copy-ai")}
             title="Copiar Prompt de IA apenas com as telas, fluxos e regras desta Fase"
-            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[var(--bg-card)] hover:bg-[#1B4DFF] text-[var(--ink-primary)] hover:text-[#FAF8F4] border border-[var(--rule-strong)] font-mono text-[10px] font-semibold transition-colors"
+            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[5px] bg-[var(--bg-card)] hover:bg-[#1B4DFF] text-[var(--ink-primary)] hover:text-[#FAF8F4] border border-[var(--rule-hairline)] font-mono text-[10px] font-semibold transition-colors"
           >
-            <Sparkles className="w-3 h-3" />
-            <span>Prompt IA da Fase</span>
+            <Sparkles className="w-3 h-3 text-[#3B66FF] group-hover:text-white" />
+            <span>Prompt IA</span>
           </button>
           <button
             type="button"
             onClick={(e) => triggerPhaseAction(e, "download")}
             title="Baixar arquivo .md apenas com os itens desta Fase"
-            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] font-mono text-[10px] font-semibold transition-colors"
+            aria-label="Baixar arquivo .md desta Fase"
+            className="nodrag inline-flex items-center gap-1 px-2 py-1 rounded-[5px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] font-mono text-[10px] font-semibold transition-colors"
           >
             <Download className="w-3 h-3" />
-            <span>.MD da Fase</span>
+            <span>.MD</span>
           </button>
         </div>
       </div>

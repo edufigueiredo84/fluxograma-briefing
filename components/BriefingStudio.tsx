@@ -31,9 +31,7 @@ import {
   FileText,
   Camera,
   Check,
-  Eye,
   PenTool,
-  FolderKanban,
   PanelRightClose,
   PanelRightOpen,
   ArrowRight,
@@ -43,6 +41,9 @@ import {
   X,
   Sun,
   Moon,
+  Search,
+  Wand2,
+  LayoutGrid,
 } from "lucide-react";
 import { BRIEFING_NODE_TYPES } from "@/components/nodes/BriefingNodes";
 import {
@@ -50,7 +51,11 @@ import {
   type DrawerTab,
 } from "@/components/RightDossierDrawer";
 import { BOARD_TEMPLATES } from "@/lib/templates";
-import { compilePhaseToMarkdown } from "@/lib/prd-compiler";
+import {
+  compilePhaseToMarkdown,
+  getNodesInSection,
+  parseTranscriptToFlowNodes,
+} from "@/lib/prd-compiler";
 import type {
   BoardProject,
   BriefingEdge,
@@ -122,6 +127,15 @@ function styleEdges(
   });
 }
 
+const LEGACY_TEMPLATE_IDS = new Set([
+  "crm-funil-b2b",
+  "crm-b2b-v1",
+  "saas-onboarding-v1",
+  "aprovacao-financeira-v1",
+  "canvas-limpo-v1",
+  "novo-briefing",
+]);
+
 export function BriefingStudio() {
   const initialTemplate = BOARD_TEMPLATES["crm-funil"];
   const [boardMeta, setBoardMeta] = useState<
@@ -163,12 +177,25 @@ export function BriefingStudio() {
   } | null>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string>("all");
-  const [savedBoards, setSavedBoards] = useState<BoardProject[]>(
-    Object.values(BOARD_TEMPLATES)
-  );
+  const [savedBoards, setSavedBoards] = useState<BoardProject[]>([]);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandMode, setCommandMode] = useState<"search" | "transcript">(
+    "search"
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "duvida" | "mvp" | "validado"
+  >("all");
+  const [transcriptText, setTranscriptText] = useState("");
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const sectionDragRef = useRef<{
+    sectionId: string;
+    lastX: number;
+    lastY: number;
+    childIds: Set<string>;
+  } | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -257,7 +284,9 @@ export function BriefingStudio() {
       if (localDraft) {
         try {
           const parsed = JSON.parse(localDraft) as BoardProject;
-          if (parsed && parsed.nodes && parsed.nodes.length > 0) {
+          if (parsed && LEGACY_TEMPLATE_IDS.has(parsed.id)) {
+            window.localStorage.removeItem("briefing_current_board");
+          } else if (parsed && parsed.nodes && parsed.nodes.length > 0) {
             setBoardMeta({
               id: parsed.id,
               title: parsed.title,
@@ -665,31 +694,119 @@ export function BriefingStudio() {
     [nodes, setNodes]
   );
 
-  const handleSelectTemplate = (templateKey: string) => {
-    const tpl = BOARD_TEMPLATES[templateKey];
-    if (!tpl) return;
-    if (nodes.length > 0) {
-      setUndoSnapshot({ nodes, edges });
-    }
-    setBoardMeta({
-      id: tpl.id,
-      title: tpl.title,
-      clientName: tpl.clientName,
-      systemType: tpl.systemType,
-      version: tpl.version,
-      objective: tpl.objective,
-      updatedAt: new Date().toISOString(),
-    });
-    setNodes(tpl.nodes);
-    setEdges(styleEdges(tpl.edges));
-    setSelectedNodeId(tpl.nodes.find((n) => n.type === "screen")?.id || null);
-    showToast(`Template "${tpl.title}" carregado!`);
-  };
-
   const handleClearCanvas = useCallback(() => {
     if (isClientMode || nodes.length === 0) return;
     setConfirmClearOpen(true);
   }, [isClientMode, nodes.length]);
+
+  // Auto-organize all blocks cleanly inside their respective Phases (Sections)
+  const handleAutoOrganizeByPhase = useCallback(() => {
+    if (isClientMode || nodes.length === 0) return;
+
+    setNodes((currentNodes) => {
+      const sections = currentNodes
+        .filter((n) => n.data.category === "section")
+        .sort((a, b) => a.position.x - b.position.x);
+      const nonSections = currentNodes.filter(
+        (n) => n.data.category !== "section"
+      );
+
+      if (sections.length === 0) {
+        return nonSections.map((n, idx) => ({
+          ...n,
+          position: {
+            x: 80 + (idx % 3) * 380,
+            y: 100 + Math.floor(idx / 3) * 390,
+          },
+        }));
+      }
+
+      // Assign each non-section node to its containing section or nearest section horizontally
+      const bucketMap = new Map<string, BriefingNode[]>();
+      sections.forEach((s) => bucketMap.set(s.id, []));
+
+      for (const item of nonSections) {
+        const directSec = sections.find((sec) =>
+          getNodesInSection(currentNodes, sec).some((c) => c.id === item.id)
+        );
+        if (directSec) {
+          bucketMap.get(directSec.id)?.push(item);
+        } else {
+          // Nearest section by X center
+          let nearest = sections[0];
+          let bestDist = Infinity;
+          for (const sec of sections) {
+            const secCenter =
+              sec.position.x + (sec.data.sectionWidth || 720) / 2;
+            const d = Math.abs(item.position.x - secCenter);
+            if (d < bestDist) {
+              bestDist = d;
+              nearest = sec;
+            }
+          }
+          bucketMap.get(nearest.id)?.push(item);
+        }
+      }
+
+      const updatedNodes: BriefingNode[] = [];
+      let cursorX = 40;
+      const baseY = 40;
+
+      for (const sec of sections) {
+        const children = (bucketMap.get(sec.id) || []).sort((a, b) =>
+          Math.abs(a.position.x - b.position.x) > 80
+            ? a.position.x - b.position.x
+            : a.position.y - b.position.y
+        );
+
+        const cols = children.length <= 1 ? 1 : 2;
+        const rows = Math.max(1, Math.ceil(children.length / cols));
+        const colStride = 420;
+        const rowStride = 395;
+        const padX = 48;
+        const padTop = 104;
+        const padBottom = 56;
+
+        const secWidth = Math.max(
+          740,
+          padX * 2 + (cols - 1) * colStride + 296
+        );
+        const secHeight = Math.max(
+          740,
+          padTop + (rows - 1) * rowStride + 350 + padBottom
+        );
+
+        updatedNodes.push({
+          ...sec,
+          position: { x: cursorX, y: baseY },
+          style: { ...sec.style, width: secWidth, height: secHeight },
+          data: {
+            ...sec.data,
+            sectionWidth: secWidth,
+            sectionHeight: secHeight,
+          },
+        });
+
+        children.forEach((child, idx) => {
+          const col = idx % cols;
+          const row = Math.floor(idx / cols);
+          updatedNodes.push({
+            ...child,
+            position: {
+              x: cursorX + padX + col * colStride,
+              y: baseY + padTop + row * rowStride,
+            },
+          });
+        });
+
+        cursorX += secWidth + 100;
+      }
+
+      return updatedNodes;
+    });
+
+    showToast("Fluxo organizado e espaçado dentro de cada Fase!");
+  }, [isClientMode, nodes.length, setNodes, showToast]);
 
   const executeClearCanvas = useCallback(
     async (saveBeforeClear: boolean) => {
@@ -802,22 +919,39 @@ export function BriefingStudio() {
     [setNodes, setEdges, showToast]
   );
 
-  // Listen to Phase Export buttons clicked directly on Section headers on the canvas
+  // Listen to Phase Export & Approval buttons clicked directly on Section headers on the canvas
   useEffect(() => {
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{
         sectionId: string;
-        action: "download" | "copy-ai";
+        action: "download" | "copy-ai" | "approve-phase";
       }>;
       if (!custom.detail?.sectionId) return;
       const { sectionId, action } = custom.detail;
+      const secNode = nodes.find((n) => n.id === sectionId);
+
+      if (action === "approve-phase" && secNode) {
+        const children = getNodesInSection(nodes, secNode);
+        const childIds = new Set(children.map((c) => c.id));
+        setNodes((nds) =>
+          nds.map((n) =>
+            childIds.has(n.id)
+              ? { ...n, data: { ...n.data, status: "validado" } }
+              : n
+          )
+        );
+        showToast(
+          `Escopo da ${secNode.data.code} aprovado! (${children.length} bloco(s) validados)`
+        );
+        return;
+      }
+
       const fullBoard: BoardProject = {
         ...boardMeta,
         nodes,
         edges,
       };
       const md = compilePhaseToMarkdown(fullBoard, sectionId);
-      const secNode = nodes.find((n) => n.id === sectionId);
       const phaseCode = (secNode?.data.code || "fase").toLowerCase();
 
       setSelectedPhaseId(sectionId);
@@ -843,7 +977,58 @@ export function BriefingStudio() {
 
     window.addEventListener("briefing-phase-export", handler);
     return () => window.removeEventListener("briefing-phase-export", handler);
-  }, [boardMeta, nodes, edges, showToast]);
+  }, [boardMeta, nodes, edges, setNodes, showToast]);
+
+  // Listen to Screen Prototype Preview button clicked on ScreenNode
+  useEffect(() => {
+    const onScreenPreview = (event: Event) => {
+      const custom = event as CustomEvent<{ code?: string }>;
+      const target = nodes.find((n) => n.data.code === custom.detail?.code);
+      if (target) {
+        setSelectedNodeId(target.id);
+      }
+      setActiveTab("inspector");
+      setDrawerOpen(true);
+    };
+    window.addEventListener("briefing-screen-preview", onScreenPreview);
+    return () =>
+      window.removeEventListener("briefing-screen-preview", onScreenPreview);
+  }, [nodes]);
+
+  // Global keyboard shortcut: Ctrl+K / Cmd+K for Command & Transcript Palette
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandOpen((prev) => !prev);
+      } else if (e.key === "Escape") {
+        setCommandOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const handleGenerateFromTranscript = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transcriptText.trim() || isClientMode) return;
+    const { nodes: genNodes, edges: genEdges } = parseTranscriptToFlowNodes(
+      transcriptText,
+      nodes
+    );
+    if (genNodes.length === 0) return;
+    setNodes((nds) => [...nds, ...genNodes]);
+    setEdges((eds) =>
+      styleEdges([...eds, ...genEdges], theme === "dark")
+    );
+    const firstScreen = genNodes.find((n) => n.data.category === "screen");
+    if (firstScreen) setSelectedNodeId(firstScreen.id);
+    setTranscriptText("");
+    setCommandOpen(false);
+    showToast(
+      `Transcrição convertida em ${genNodes.length} blocos conectados no canvas!`
+    );
+  };
 
   const handleSaveCloud = async () => {
     setIsSaving(true);
@@ -918,18 +1103,18 @@ export function BriefingStudio() {
       data-theme={theme}
       className="h-screen w-screen overflow-hidden flex flex-col bg-[var(--bg-vellum)] text-[var(--ink-primary)] transition-colors duration-200"
     >
-      {/* TOP ARCHITECTURAL TITLE BLOCK HEADER */}
-      <header className="h-[58px] shrink-0 bg-[var(--bg-panel)] border-b border-[var(--rule-strong)] px-3 sm:px-4 flex items-center justify-between gap-2 z-20">
-        {/* Left: Brand + Project Identity */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-[#16181D] text-[#FAF8F4] border border-[var(--rule-hairline)] rounded-[6px] shrink-0">
+      {/* TOP ARCHITECTURAL TITLE BLOCK HEADER (DECLUTTERED & ICON-DRIVEN) */}
+      <header className="h-[54px] shrink-0 bg-[var(--bg-panel)] border-b border-[var(--rule-strong)] px-3 sm:px-4 flex items-center justify-between gap-3 z-20">
+        {/* Left: Compact Brand Stamp + Project & Client Identity */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-[#16181D] text-[#FAF8F4] border border-[var(--rule-hairline)] rounded-[6px] shrink-0">
             <PenTool className="w-3.5 h-3.5 text-[#F5C542]" />
             <span className="font-mono text-[11px] font-bold tracking-tight">
-              PLANTA · BRIEFING
+              PLANTA
             </span>
           </div>
 
-          <div className="min-w-0 flex items-center gap-2">
+          <div className="min-w-0 flex items-center gap-1.5">
             <input
               type="text"
               disabled={isClientMode}
@@ -938,176 +1123,172 @@ export function BriefingStudio() {
               onChange={(e) =>
                 setBoardMeta((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="font-bold text-[14px] text-[var(--ink-primary)] bg-transparent border border-transparent hover:border-[var(--rule-hairline)] focus:border-[#1B4DFF] focus:bg-[var(--bg-card)] px-2 py-0.5 rounded-[5px] truncate max-w-[220px] sm:max-w-[300px] focus:outline-none"
+              className="font-bold text-[13.5px] text-[var(--ink-primary)] bg-transparent border border-transparent hover:border-[var(--rule-hairline)] focus:border-[#1B4DFF] focus:bg-[var(--bg-card)] px-2 py-0.5 rounded-[5px] truncate max-w-[180px] sm:max-w-[260px] focus:outline-none"
             />
-            <span className="hidden md:inline-flex items-center font-mono text-[11px] px-2 py-0.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[4px] text-[var(--ink-secondary)] shrink-0">
-              Cliente: {boardMeta.clientName}
+            <span className="hidden lg:inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[4px] text-[var(--ink-secondary)] shrink-0">
+              <span>{boardMeta.clientName}</span>
+              <span className="opacity-40">·</span>
+              <span className="text-[var(--ink-primary)] font-semibold">
+                {boardMeta.version}
+              </span>
             </span>
           </div>
-
-          {/* Template Selector */}
-          {!isClientMode && (
-            <div className="hidden lg:flex items-center gap-1.5 pl-2 border-l border-[var(--rule-hairline)]">
-              <FolderKanban className="w-3.5 h-3.5 text-[var(--ink-secondary)]" />
-              <select
-                aria-label="Selecionar template de jornada"
-                onChange={(e) => handleSelectTemplate(e.target.value)}
-                defaultValue="crm-funil"
-                className="font-mono text-[11px] bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[6px] px-2 py-1 text-[var(--ink-primary)] focus:outline-none focus:border-[#1B4DFF]"
-              >
-                <option value="crm-funil">
-                  Template: Funil CRM & Vendas B2B
-                </option>
-                <option value="saas-onboarding">
-                  Template: SaaS Login, Setup & Trial
-                </option>
-                <option value="dashboard-aprovacao">
-                  Template: Alçada de Compras & ERP
-                </option>
-                <option value="canvas-limpo">
-                  + Iniciar Canvas em Branco (Do Zero)
-                </option>
-              </select>
-            </div>
-          )}
         </div>
 
-        {/* Center: Live Meeting Quick-Chain Composer */}
+        {/* Center: Unified Quick-Chain Composer + Ctrl+K Trigger */}
         {!isClientMode && (
           <form
             onSubmit={handleQuickChainGenerate}
-            className="hidden xl:flex items-center flex-1 max-w-[460px] mx-2"
+            className="hidden md:flex items-center flex-1 max-w-[480px] mx-2"
           >
-            <div className="flex items-center w-full bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[8px] overflow-hidden focus-within:ring-2 focus-within:ring-[#1B4DFF]/25">
-              <span className="pl-2.5 pr-1.5 text-[#1B4DFF] shrink-0">
+            <div className="flex items-center w-full h-[34px] bg-[var(--bg-card)] border border-[var(--rule-hairline)] hover:border-[var(--rule-strong)] rounded-[8px] overflow-hidden focus-within:border-[#1B4DFF] transition-colors">
+              <span className="pl-2.5 pr-1.5 text-[#3B66FF] shrink-0">
                 <Sparkles className="w-3.5 h-3.5" />
               </span>
               <input
                 type="text"
                 value={quickChainInput}
                 onChange={(e) => setQuickChainInput(e.target.value)}
-                placeholder="Captura rápida: Tela: Login -> Decisão: Aprovado? -> API: Asaas"
-                className="w-full py-1.5 px-1 text-[12px] bg-transparent text-[var(--ink-primary)] placeholder:text-[var(--ink-secondary)] focus:outline-none"
+                placeholder="Fluxo rápido: Tela: Login -> Decisão: Aprovado? -> API: Asaas"
+                className="w-full h-full px-1 text-[12px] bg-transparent text-[var(--ink-primary)] placeholder:text-[var(--ink-secondary)] focus:outline-none"
               />
-              <button
-                type="submit"
-                className="px-2.5 py-1.5 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] font-mono text-[11px] font-semibold shrink-0 flex items-center gap-1 transition-colors"
-              >
-                <span>Gerar</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
+              {quickChainInput.trim() ? (
+                <button
+                  type="submit"
+                  title="Gerar blocos encadeados no canvas (Enter)"
+                  aria-label="Gerar blocos encadeados no canvas"
+                  className="h-full px-2.5 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] font-mono text-[10px] font-semibold shrink-0 flex items-center gap-1 transition-colors"
+                >
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCommandMode("search");
+                    setCommandOpen(true);
+                  }}
+                  title="Abrir Paleta de Comandos, Templates e Busca (Ctrl+K)"
+                  className="mr-1.5 px-1.5 py-0.5 bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-[var(--ink-secondary)] border border-[var(--rule-hairline)] rounded-[4px] font-mono text-[10px] shrink-0 transition-colors"
+                >
+                  Ctrl+K
+                </button>
+              )}
             </div>
           </form>
         )}
 
-        {/* Right: Clear CTA + Theme Toggle + Mode Toggle + Export PRD + Share */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {!isClientMode && (
-            <>
-              {nodes.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={handleClearCanvas}
-                  title="Limpar todos os blocos da tela para começar do zero"
-                  className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[#D9381E]/15 hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] flex items-center gap-1.5 transition-colors"
-                >
-                  <Eraser className="w-3.5 h-3.5" />
-                  <span>Limpar Tela</span>
-                </button>
-              ) : (
-                undoSnapshot && (
-                  <button
-                    type="button"
-                    onClick={handleUndoClear}
-                    title="Restaurar o fluxo anterior"
-                    className="px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-semibold bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-strong)] flex items-center gap-1.5 transition-colors"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-[#1B4DFF]" />
-                    <span>Desfazer Limpeza</span>
-                  </button>
-                )
-              )}
-            </>
-          )}
+        {/* Right: Grouped Icon Toolbar + Single Primary CTA */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Precision Icon Utility Dock */}
+          <div className="flex items-center bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[8px] p-0.5 gap-0.5">
+            {/* 1. Search / Command Palette (Ctrl+K) */}
+            <button
+              type="button"
+              onClick={() => {
+                setCommandMode("search");
+                setCommandOpen(true);
+              }}
+              title="Buscar blocos e filtrar status (Ctrl+K)"
+              aria-label="Buscar blocos e filtrar status"
+              className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+            >
+              <Search className="w-3.5 h-3.5" />
+            </button>
 
-          {/* Dark / Light Mode Toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            title={
-              theme === "dark"
-                ? "Mudar para Modo Claro (Vellum Papel)"
-                : "Mudar para Dark Mode (Planta Noturna)"
-            }
-            className="px-2.5 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[7px] font-mono text-[11px] font-medium flex items-center gap-1.5 transition-colors"
-          >
-            {theme === "dark" ? (
-              <>
-                <Sun className="w-3.5 h-3.5 text-[#F5C542]" />
-                <span className="hidden sm:inline">Light</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-3.5 h-3.5 text-[#1B4DFF]" />
-                <span className="hidden sm:inline">Dark</span>
-              </>
+            {/* 2. AI Transcript to Flowchart */}
+            {!isClientMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandMode("transcript");
+                  setCommandOpen(true);
+                }}
+                title="Converter Transcrição da Reunião em Fluxograma"
+                aria-label="Converter Transcrição da Reunião em Fluxograma"
+                className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[#3B66FF] hover:bg-[#1B4DFF]/15 transition-colors"
+              >
+                <Wand2 className="w-3.5 h-3.5" />
+              </button>
             )}
-          </button>
 
-          <button
-            type="button"
-            onClick={() => setIsClientMode((v) => !v)}
-            className={`px-2.5 py-1.5 rounded-[7px] font-mono text-[11px] font-medium border flex items-center gap-1.5 transition-colors ${
-              isClientMode
-                ? "bg-[#D9381E]/15 text-[#D9381E] border-[#D9381E]"
-                : "bg-[var(--bg-card)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] hover:bg-[var(--bg-subcard)]"
-            }`}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">
-              {isClientMode ? "Visão Cliente" : "Modo Consultor"}
-            </span>
-          </button>
+            <span className="w-[1px] h-4 bg-[var(--rule-hairline)] mx-0.5" />
 
-          <button
-            type="button"
-            onClick={handleExportPng}
-            title="Exportar imagem PNG da planta"
-            className="p-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[7px]"
-          >
-            <Camera className="w-4 h-4" />
-          </button>
+            {/* 3. Export High-Res PNG */}
+            <button
+              type="button"
+              onClick={handleExportPng}
+              title="Exportar imagem PNG da planta"
+              aria-label="Exportar imagem PNG da planta"
+              className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+            >
+              <Camera className="w-3.5 h-3.5" />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setDrawerOpen(true);
-              setActiveTab("cloud");
-              handleSaveCloud();
-            }}
-            className="px-2.5 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-strong)] rounded-[7px] text-[12px] font-semibold flex items-center gap-1.5"
-          >
-            <Share2 className="w-3.5 h-3.5 text-[#0F766E]" />
-            <span className="hidden sm:inline">Compartilhar</span>
-          </button>
+            {/* 4. Save & Share Cloud Link */}
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(true);
+                setActiveTab("cloud");
+                handleSaveCloud();
+              }}
+              title="Salvar na nuvem e copiar link de compartilhamento"
+              aria-label="Salvar na nuvem e compartilhar"
+              className="relative w-7 h-7 rounded-[6px] flex items-center justify-center text-[var(--ink-secondary)] hover:text-[#149E93] hover:bg-[var(--bg-hover)] transition-colors"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span
+                className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
+                  syncStatus === "supabase" ? "bg-[#2DD4BF]" : "bg-[#F5C542]"
+                }`}
+              />
+            </button>
 
+            <span className="w-[1px] h-4 bg-[var(--rule-hairline)] mx-0.5" />
+
+            {/* 5. Theme Toggle (Icon-only) */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={
+                theme === "dark"
+                  ? "Mudar para Modo Claro (Papel Vellum)"
+                  : "Mudar para Modo Escuro (Planta Noturna)"
+              }
+              aria-label="Alternar tema claro ou escuro"
+              className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-3.5 h-3.5 text-[#F5C542]" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-[#1B4DFF]" />
+              )}
+            </button>
+          </div>
+
+          {/* Primary Action CTA: Compilar PRD */}
           <button
             type="button"
             onClick={() => {
               setDrawerOpen(true);
               setActiveTab("prd");
             }}
-            className="px-3 py-1.5 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[7px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
+            className="h-[32px] px-3 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[7px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Compilar PRD</span>
           </button>
 
+          {/* Drawer Collapse/Expand Icon Button */}
           <button
             type="button"
             onClick={() => setDrawerOpen((o) => !o)}
             title={drawerOpen ? "Recolher painel lateral" : "Abrir painel lateral"}
-            className="p-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[7px]"
+            aria-label={
+              drawerOpen ? "Recolher painel lateral" : "Abrir painel lateral"
+            }
+            className="w-8 h-8 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[7px] flex items-center justify-center transition-colors"
           >
             {drawerOpen ? (
               <PanelRightClose className="w-4 h-4" />
@@ -1118,8 +1299,133 @@ export function BriefingStudio() {
         </div>
       </header>
 
-      {/* WORKSPACE BODY: INFINITE CANVAS + RIGHT DOSSIER DRAWER */}
+      {/* WORKSPACE BODY: LEFT BLOCK SIDEBAR + INFINITE CANVAS + RIGHT DOSSIER DRAWER */}
       <div className="flex-1 flex min-h-0 relative">
+        {/* LEFT VERTICAL CREATION SIDEBAR */}
+        {!isClientMode && (
+          <aside className="w-[148px] shrink-0 h-full bg-[var(--bg-panel)] border-r border-[var(--rule-strong)] p-2.5 flex flex-col justify-between select-none z-10 overflow-y-auto">
+            <div className="flex flex-col gap-1.5">
+              {/* Product Semantics Column */}
+              <button
+                type="button"
+                onClick={() => handleAddBlock("screen")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold flex items-center gap-2 transition-colors"
+              >
+                <Monitor className="w-3.5 h-3.5 shrink-0" />
+                <span>+ Tela</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAddBlock("action")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+              >
+                <Zap className="w-3.5 h-3.5 text-[#B45309] shrink-0" />
+                <span>+ Ação</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAddBlock("decision")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+              >
+                <GitBranch className="w-3.5 h-3.5 text-[#D9381E] shrink-0" />
+                <span>+ Decisão</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAddBlock("integration")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+              >
+                <Webhook className="w-3.5 h-3.5 text-[#6D28D9] shrink-0" />
+                <span>+ API</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAddBlock("database")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+              >
+                <Database className="w-3.5 h-3.5 text-[#0F766E] shrink-0" />
+                <span>+ Tabela DB</span>
+              </button>
+
+              <div className="h-[1px] w-full bg-[var(--rule-hairline)] my-1" />
+
+              {/* FigJam Freeform Column */}
+              <button
+                type="button"
+                onClick={() => handleAddBlock("sticky")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12px] font-semibold flex items-center gap-2 transition-colors"
+              >
+                <StickyNote className="w-3.5 h-3.5 shrink-0" />
+                <span>+ Post-it</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAddBlock("shape")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+              >
+                <Square className="w-3.5 h-3.5 shrink-0" />
+                <span>+ Forma</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAddBlock("section")}
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+              >
+                <Frame className="w-3.5 h-3.5 shrink-0" />
+                <span>+ Fase</span>
+              </button>
+
+              <div className="h-[1px] w-full bg-[var(--rule-hairline)] my-1" />
+
+              {/* Auto-Organize Phases Action */}
+              <button
+                type="button"
+                onClick={handleAutoOrganizeByPhase}
+                disabled={nodes.length === 0}
+                title="Alinhar e espaçar automaticamente os blocos dentro de cada Fase"
+                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-[#3B66FF] shrink-0" />
+                <span>Organizar Fases</span>
+              </button>
+
+              {/* Primary Clear Canvas Action in Left Sidebar */}
+              <button
+                type="button"
+                onClick={handleClearCanvas}
+                disabled={nodes.length === 0}
+                title="Limpar todos os blocos da tela"
+                className={`w-full px-2.5 py-2 rounded-[8px] text-[12px] font-semibold flex items-center gap-2 transition-colors ${
+                  nodes.length > 0
+                    ? "bg-[#D9381E] hover:bg-[#B42318] text-[#FAF8F4]"
+                    : "bg-[#D9381E]/35 text-[#FAF8F4]/60 cursor-not-allowed"
+                }`}
+              >
+                <Eraser className="w-3.5 h-3.5 shrink-0" />
+                <span>Limpar Tela</span>
+              </button>
+
+              {undoSnapshot && nodes.length === 0 && (
+                <button
+                  type="button"
+                  onClick={handleUndoClear}
+                  title="Restaurar o fluxo anterior"
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold flex items-center gap-2 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                  <span>Desfazer</span>
+                </button>
+              )}
+            </div>
+          </aside>
+        )}
+
         {/* React Flow Canvas Container */}
         <div ref={canvasRef} className="flex-1 h-full relative">
           <ReactFlow
@@ -1132,6 +1438,46 @@ export function BriefingStudio() {
             onNodeClick={(_, node) => {
               setSelectedNodeId(node.id);
               setDrawerOpen(true);
+            }}
+            onNodeDragStart={(_, node) => {
+              if (node.data.category === "section") {
+                const children = getNodesInSection(nodes, node);
+                sectionDragRef.current = {
+                  sectionId: node.id,
+                  lastX: node.position.x,
+                  lastY: node.position.y,
+                  childIds: new Set(children.map((c) => c.id)),
+                };
+              } else {
+                sectionDragRef.current = null;
+              }
+            }}
+            onNodeDrag={(_, node) => {
+              const dragInfo = sectionDragRef.current;
+              if (dragInfo && dragInfo.sectionId === node.id) {
+                const dx = node.position.x - dragInfo.lastX;
+                const dy = node.position.y - dragInfo.lastY;
+                if (dx !== 0 || dy !== 0) {
+                  dragInfo.lastX = node.position.x;
+                  dragInfo.lastY = node.position.y;
+                  setNodes((nds) =>
+                    nds.map((n) =>
+                      dragInfo.childIds.has(n.id)
+                        ? {
+                            ...n,
+                            position: {
+                              x: n.position.x + dx,
+                              y: n.position.y + dy,
+                            },
+                          }
+                        : n
+                    )
+                  );
+                }
+              }
+            }}
+            onNodeDragStop={() => {
+              sectionDragRef.current = null;
             }}
             onPaneClick={() => setSelectedNodeId(null)}
             defaultEdgeOptions={{ style: DEFAULT_EDGE_STYLE }}
@@ -1157,7 +1503,7 @@ export function BriefingStudio() {
             />
 
             <MiniMap
-              position="top-left"
+              position="bottom-right"
               pannable
               zoomable
               maskColor={
@@ -1225,104 +1571,6 @@ export function BriefingStudio() {
               </div>
             </Panel>
 
-            {/* Bottom Floating FigJam + Product Architecture Dock */}
-            {!isClientMode && (
-              <Panel position="bottom-center" className="!mb-4">
-                <div className="px-2.5 py-2 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[14px] flex items-center gap-1.5 flex-wrap justify-center">
-                  {/* Product Semantics Group */}
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("screen")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
-                  >
-                    <Monitor className="w-3.5 h-3.5" />
-                    <span>+ Tela</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("action")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <Zap className="w-3.5 h-3.5 text-[#B45309]" />
-                    <span>+ Ação</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("decision")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <GitBranch className="w-3.5 h-3.5 text-[#D9381E]" />
-                    <span>+ Decisão</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("integration")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <Webhook className="w-3.5 h-3.5 text-[#6D28D9]" />
-                    <span>+ API</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("database")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <Database className="w-3.5 h-3.5 text-[#0F766E]" />
-                    <span>+ Tabela DB</span>
-                  </button>
-
-                  <span className="h-5 w-[1px] bg-[var(--rule-hairline)] mx-0.5 hidden sm:inline-block" />
-
-                  {/* FigJam Freeform Layer */}
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("sticky")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
-                  >
-                    <StickyNote className="w-3.5 h-3.5" />
-                    <span>+ Post-it</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("shape")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <Square className="w-3.5 h-3.5" />
-                    <span>+ Forma</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddBlock("section")}
-                    className="px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-subcard)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <Frame className="w-3.5 h-3.5" />
-                    <span>+ Fase</span>
-                  </button>
-
-                  {nodes.length > 0 && (
-                    <>
-                      <span className="h-5 w-[1px] bg-[var(--rule-hairline)] mx-0.5 hidden sm:inline-block" />
-                      <button
-                        type="button"
-                        onClick={handleClearCanvas}
-                        title="Limpar toda a tela"
-                        className="px-2.5 py-1.5 rounded-[8px] bg-[#D9381E]/15 hover:bg-[#D9381E] text-[#D9381E] hover:text-[#FAF8F4] border border-[#D9381E] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
-                      >
-                        <Eraser className="w-3.5 h-3.5" />
-                        <span>Limpar</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-              </Panel>
-            )}
-
             {/* Empty State Card when canvas is cleared */}
             {nodes.length === 0 && !isClientMode && (
               <Panel position="top-center" className="!mt-24">
@@ -1365,6 +1613,224 @@ export function BriefingStudio() {
               </Panel>
             )}
           </ReactFlow>
+
+          {/* Floating Command Palette & Transcript-to-Flow Popover (Ctrl+K) */}
+          {commandOpen && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-[560px] bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[12px] overflow-hidden">
+              {/* Top Mode Switcher Bar */}
+              <div className="px-3 py-2 bg-[var(--bg-panel)] border-b border-[var(--rule-hairline)] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCommandMode("search")}
+                    className={`px-2.5 py-1 rounded-[6px] font-mono text-[11px] font-semibold flex items-center gap-1.5 transition-colors ${
+                      commandMode === "search"
+                        ? "bg-[#1B4DFF] text-[#FAF8F4]"
+                        : "text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
+                    }`}
+                  >
+                    <Search className="w-3 h-3" />
+                    <span>Buscar Blocos</span>
+                  </button>
+                  {!isClientMode && (
+                    <button
+                      type="button"
+                      onClick={() => setCommandMode("transcript")}
+                      className={`px-2.5 py-1 rounded-[6px] font-mono text-[11px] font-semibold flex items-center gap-1.5 transition-colors ${
+                        commandMode === "transcript"
+                          ? "bg-[#1B4DFF] text-[#FAF8F4]"
+                          : "text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
+                      }`}
+                    >
+                      <Wand2 className="w-3 h-3" />
+                      <span>Transcrição ➔ Fluxo</span>
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCommandOpen(false)}
+                  title="Fechar (Esc)"
+                  aria-label="Fechar paleta de comandos"
+                  className="p-1 text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] rounded-[5px]"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {commandMode === "search" ? (
+                <div className="p-3 space-y-3">
+                  {/* Search Input & Filter Chips */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[7px] px-2.5 py-1.5">
+                      <Search className="w-3.5 h-3.5 text-[var(--ink-secondary)] mr-2 shrink-0" />
+                      <input
+                        type="text"
+                        autoFocus
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Buscar por código (SCR-01), título, rota ou ator..."
+                        className="w-full text-[12px] bg-transparent text-[var(--ink-primary)] placeholder:text-[var(--ink-secondary)] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      {(
+                        [
+                          { id: "all", label: "Todos" },
+                          { id: "duvida", label: "! Com Dúvida" },
+                          { id: "mvp", label: "Apenas MVP" },
+                          { id: "validado", label: "✓ Validados" },
+                        ] as const
+                      ).map((flt) => (
+                        <button
+                          key={flt.id}
+                          type="button"
+                          onClick={() => setStatusFilter(flt.id)}
+                          className={`px-2 py-0.5 rounded-[4px] font-mono text-[10px] border transition-colors ${
+                            statusFilter === flt.id
+                              ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                              : "bg-[var(--bg-subcard)] text-[var(--ink-secondary)] border-[var(--rule-hairline)] hover:text-[var(--ink-primary)]"
+                          }`}
+                        >
+                          {flt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Filtered Nodes Result List */}
+                  <div className="max-h-[210px] overflow-y-auto divide-y divide-[var(--rule-hairline)] border border-[var(--rule-hairline)] rounded-[8px] bg-[var(--bg-subcard)]">
+                    {nodes
+                      .filter((n) => {
+                        if (n.data.category === "section") return false;
+                        if (
+                          statusFilter === "duvida" &&
+                          n.data.status !== "duvida"
+                        )
+                          return false;
+                        if (
+                          statusFilter === "validado" &&
+                          n.data.status !== "validado"
+                        )
+                          return false;
+                        if (
+                          statusFilter === "mvp" &&
+                          (n.data.priority || "mvp") !== "mvp"
+                        )
+                          return false;
+                        if (!searchQuery.trim()) return true;
+                        const q = searchQuery.toLowerCase();
+                        return (
+                          (n.data.code || "").toLowerCase().includes(q) ||
+                          (n.data.title || "").toLowerCase().includes(q) ||
+                          (n.data.route || "").toLowerCase().includes(q) ||
+                          (n.data.actor || "").toLowerCase().includes(q)
+                        );
+                      })
+                      .map((node) => (
+                        <button
+                          key={node.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedNodeId(node.id);
+                            setNodes((nds) =>
+                              nds.map((n) => ({
+                                ...n,
+                                selected: n.id === node.id,
+                              }))
+                            );
+                            setActiveTab("inspector");
+                            setDrawerOpen(true);
+                            setCommandOpen(false);
+                          }}
+                          className="w-full px-3 py-2 text-left flex items-center justify-between hover:bg-[var(--bg-hover)] transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[3px] shrink-0 tabular-nums">
+                              {node.data.code}
+                            </span>
+                            <span className="text-[12px] font-medium text-[var(--ink-primary)] truncate">
+                              {node.data.title}
+                            </span>
+                            {node.data.route && (
+                              <span className="font-mono text-[10px] text-[var(--ink-secondary)] truncate hidden sm:inline">
+                                {node.data.route}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {node.data.status === "duvida" && (
+                              <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[#D9381E]/20 text-[#F87171] border border-[#D9381E] rounded-[3px]">
+                                DÚVIDA
+                              </span>
+                            )}
+                            {node.data.status === "validado" && (
+                              <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[#0F766E]/20 text-[#2DD4BF] border border-[#0F766E] rounded-[3px]">
+                                OK
+                              </span>
+                            )}
+                            <span className="font-mono text-[10px] text-[var(--ink-secondary)] uppercase">
+                              {node.data.category}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              ) : (
+                <form
+                  onSubmit={handleGenerateFromTranscript}
+                  className="p-3 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] text-[var(--ink-secondary)]">
+                      Cole um trecho da transcrição da call ou tópicos do cliente para gerar a Fase e os blocos automaticamente:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTranscriptText(
+                          "Tela: Portal de Login SSO -> Tela: Dashboard de Pedidos & KPIs -> Ação: Solicitar Desconto Especial -> Decisão: Desconto maior que 15%? -> API: Webhook Alçada Diretoria WhatsApp -> Banco: public.discount_approvals -> Nota: Cliente pediu que o diretor possa aprovar direto pelo link do WhatsApp"
+                        )
+                      }
+                      className="font-mono text-[10px] px-2 py-0.5 bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-[#3B66FF] border border-[var(--rule-hairline)] rounded-[4px] shrink-0"
+                    >
+                      Usar Exemplo
+                    </button>
+                  </div>
+
+                  <textarea
+                    rows={4}
+                    autoFocus
+                    value={transcriptText}
+                    onChange={(e) => setTranscriptText(e.target.value)}
+                    placeholder="Ex: Tela: Login do Representante -> Tela: Catálogo & Carrinho B2B -> Decisão: Limite de Crédito Aprovado? -> API: ERP Omie / Pedido -> Banco: public.b2b_orders"
+                    className="w-full p-2.5 text-[12px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[8px] text-[var(--ink-primary)] placeholder:text-[var(--ink-secondary)] focus:outline-none focus:border-[#1B4DFF]"
+                  />
+
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCommandOpen(false)}
+                      className="px-3 py-1.5 bg-[var(--bg-panel)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[6px] text-[12px]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-3.5 py-1.5 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors"
+                    >
+                      <Wand2 className="w-3.5 h-3.5" />
+                      <span>Gerar Fluxograma no Canvas</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
 
           {/* Toast Feedback Banner */}
           {toastMsg && (

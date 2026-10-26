@@ -1,4 +1,11 @@
-import type { BoardProject, BriefingNode, FlowNodeData } from "./types";
+import type {
+  BoardProject,
+  BriefingEdge,
+  BriefingNode,
+  FlowNodeData,
+  NodeCategory,
+  ScreenField,
+} from "./types";
 
 const PRIORITY_LABELS: Record<string, string> = {
   mvp: "MVP (Essencial Fase 1)",
@@ -441,3 +448,446 @@ export function compileBoardToAIPrompt(board: BoardProject): string {
     prd,
   ].join("\n");
 }
+
+/**
+ * Fase 3: Compiles Database nodes (and inferred Screen form inputs) into SQL Migration + Prisma Schema.
+ */
+export function compileBoardToSQLAndPrisma(board: BoardProject): string {
+  const nodes = board.nodes || [];
+  const databases = nodes.filter((n) => n.data.category === "database");
+  const screens = nodes.filter((n) => n.data.category === "screen");
+
+  const lines: string[] = [];
+  lines.push(`-- ============================================================================`);
+  lines.push(`-- MIGRATION SQL (PostgreSQL / Supabase) — ${board.title.toUpperCase()}`);
+  lines.push(`-- Cliente: ${board.clientName} | Versão: ${board.version}`);
+  lines.push(`-- ============================================================================`);
+  lines.push(``);
+
+  const sanitizeIdentifier = (raw: string) =>
+    raw
+      .toLowerCase()
+      .replace(/^public\./, "")
+      .replace(/[^a-z0-9_]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "entidade";
+
+  const inferSqlType = (label: string, kind: string) => {
+    const l = label.toLowerCase();
+    if (l.includes("uuid") || l === "id") return "uuid PRIMARY KEY DEFAULT gen_random_uuid()";
+    if (l.includes("_id") || l.includes("fk")) return "uuid";
+    if (l.includes("valor") || l.includes("preco") || l.includes("mrr") || l.includes("total") || kind === "kpi")
+      return "numeric(14,2)";
+    if (l.includes("data") || l.includes("date") || l.includes("_at") || l.includes("prazo"))
+      return "timestamptz DEFAULT now()";
+    if (l.includes("ativo") || l.includes("aprovado") || l.includes("bool")) return "boolean DEFAULT false";
+    if (l.includes("json") || l.includes("meta") || kind === "table") return "jsonb DEFAULT '{}'::jsonb";
+    return "text";
+  };
+
+  if (databases.length > 0) {
+    for (const db of databases) {
+      const d = db.data as FlowNodeData;
+      const tableName = sanitizeIdentifier(d.tableName || d.title);
+      lines.push(`-- [${d.code}] ${d.title}`);
+      if (d.subtitle) lines.push(`-- ${d.subtitle}`);
+      lines.push(`CREATE TABLE IF NOT EXISTS public.${tableName} (`);
+
+      const cols = d.fields && d.fields.length > 0 ? d.fields : [];
+      const hasId = cols.some((c) => c.label.toLowerCase().startsWith("id"));
+      const colLines: string[] = [];
+
+      if (!hasId) {
+        colLines.push(`  id uuid PRIMARY KEY DEFAULT gen_random_uuid()`);
+      }
+
+      for (const col of cols) {
+        const cleanCol = sanitizeIdentifier(col.label.split("(")[0].trim());
+        const explicitTypeMatch = col.label.match(/\(([^)]+)\)/);
+        const sqlType = explicitTypeMatch
+          ? explicitTypeMatch[1]
+          : inferSqlType(cleanCol, col.kind);
+        const notNull =
+          col.required && !sqlType.toUpperCase().includes("PRIMARY KEY")
+            ? " NOT NULL"
+            : "";
+        colLines.push(`  ${cleanCol} ${sqlType}${notNull}`);
+      }
+
+      colLines.push(`  created_at timestamptz NOT NULL DEFAULT now()`);
+      colLines.push(`  updated_at timestamptz NOT NULL DEFAULT now()`);
+      lines.push(colLines.join(",\n"));
+      lines.push(`);`);
+      lines.push(``);
+    }
+  } else {
+    lines.push(`-- Nenhuma tabela explícita (DB) encontrada; tabelas inferidas das Telas (SCR):`);
+    for (const scr of screens) {
+      const d = scr.data as FlowNodeData;
+      const tableName = sanitizeIdentifier(d.route || d.title);
+      lines.push(`CREATE TABLE IF NOT EXISTS public.${tableName} (`);
+      lines.push(`  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),`);
+      for (const f of (d.fields || []).filter((x) => x.kind !== "button")) {
+        const colName = sanitizeIdentifier(f.label);
+        lines.push(`  ${colName} ${inferSqlType(colName, f.kind)},`);
+      }
+      lines.push(`  created_at timestamptz NOT NULL DEFAULT now()`);
+      lines.push(`);`);
+      lines.push(``);
+    }
+  }
+
+  lines.push(`-- ============================================================================`);
+  lines.push(`-- PRISMA SCHEMA EQUIVALENTE (schema.prisma)`);
+  lines.push(`-- ============================================================================`);
+  lines.push(`/*`);
+  for (const db of databases) {
+    const d = db.data as FlowNodeData;
+    const rawName = sanitizeIdentifier(d.tableName || d.title);
+    const modelName = rawName
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join("");
+    lines.push(`model ${modelName} {`);
+    lines.push(`  id        String   @id @default(uuid()) @db.Uuid`);
+    for (const col of d.fields || []) {
+      const cleanCol = sanitizeIdentifier(col.label.split("(")[0].trim());
+      if (cleanCol === "id") continue;
+      const prismaType =
+        cleanCol.includes("valor") || cleanCol.includes("total")
+          ? "Decimal"
+          : cleanCol.includes("data") || cleanCol.includes("at")
+          ? "DateTime"
+          : "String";
+      lines.push(`  ${cleanCol.padEnd(10, " ")} ${prismaType}${col.required ? "" : "?"}`);
+    }
+    lines.push(`  createdAt DateTime @default(now()) @map("created_at")`);
+    lines.push(`  updatedAt DateTime @updatedAt @map("updated_at")`);
+    lines.push(`  @@map("${rawName}")`);
+    lines.push(`}`);
+    lines.push(``);
+  }
+  lines.push(`*/`);
+
+  return lines.join("\n");
+}
+
+/**
+ * Fase 3: Compiles the board into Epics & Engineering Issues for Linear / Jira / GitHub Issues.
+ */
+export function compileBoardToTasks(board: BoardProject): string {
+  const nodes = board.nodes || [];
+  const sections = nodes.filter((n) => n.data.category === "section");
+  const workNodes = nodes.filter(
+    (n) => n.data.category !== "section" && n.data.category !== "sticky"
+  );
+
+  const lines: string[] = [];
+  lines.push(`# BACKLOG DE ENGENHARIA & ISSUES (LINEAR / JIRA / GITHUB)`);
+  lines.push(`**Projeto:** ${board.title} · **Cliente:** ${board.clientName} · **Versão:** ${board.version}`);
+  lines.push(``);
+
+  if (sections.length > 0) {
+    lines.push(`## ÉPICOS / MILESTONES POR FASE`);
+    for (const sec of sections) {
+      const children = getNodesInSection(nodes, sec);
+      lines.push(`### 🎯 ÉPICO [${sec.data.code}]: ${sec.data.title}`);
+      if (sec.data.subtitle) lines.push(`> ${sec.data.subtitle}`);
+      lines.push(`- **Total de entregas na fase:** ${children.length} item(ns)`);
+      for (const item of children) {
+        const d = item.data as FlowNodeData;
+        lines.push(
+          `  - [ ] **[${d.code}] ${d.title}** (${d.category.toUpperCase()} · ${
+            PRIORITY_LABELS[d.priority || "mvp"]
+          })`
+        );
+      }
+      lines.push(``);
+    }
+  }
+
+  lines.push(`## LISTA DETALHADA DE TASKS COM CRITÉRIOS DE ACEITE`);
+  lines.push(``);
+
+  workNodes.forEach((node, idx) => {
+    const d = node.data as FlowNodeData;
+    const taskCode = `TASK-${String(idx + 1).padStart(2, "0")}`;
+    const typeLabel =
+      d.category === "screen"
+        ? "Frontend / UI"
+        : d.category === "integration"
+        ? "Backend / API"
+        : d.category === "database"
+        ? "Database / Migration"
+        : d.category === "decision"
+        ? "Regra de Negócio"
+        : "Fluxo Operacional";
+
+    lines.push(`### [${taskCode}] (${d.code}) ${d.title}`);
+    lines.push(
+      `- **Camada:** ${typeLabel} | **Prioridade:** ${
+        PRIORITY_LABELS[d.priority || "mvp"]
+      } | **Ator:** ${d.actor || "Sistema"}`
+    );
+    if (d.route) lines.push(`- **Rota:** \`${d.route}\``);
+    if (d.endpoint) lines.push(`- **Endpoint:** \`${d.method || "POST"} ${d.endpoint}\``);
+    if (d.tableName) lines.push(`- **Tabela:** \`${d.tableName}\``);
+    if (d.subtitle) lines.push(`- ** Contexto:** ${d.subtitle}`);
+
+    lines.push(`- **Critérios de Aceite (DoD):**`);
+    if (d.fields && d.fields.length > 0) {
+      for (const f of d.fields) {
+        lines.push(
+          `  - [ ] Implementar \`[${f.kind.toUpperCase()}]\` **${f.label}** (${
+            f.required ? "obrigatório" : "opcional"
+          })`
+        );
+      }
+    }
+    if (d.businessRules && d.businessRules.length > 0) {
+      for (const r of d.businessRules) {
+        lines.push(`  - [ ] Validar regra: ${r}`);
+      }
+    }
+    if (
+      (!d.fields || d.fields.length === 0) &&
+      (!d.businessRules || d.businessRules.length === 0)
+    ) {
+      lines.push(`  - [ ] Garantir integração no fluxo e homologar com o cliente.`);
+    }
+    lines.push(``);
+  });
+
+  return lines.join("\n");
+}
+
+/**
+ * Fase 2: Converte um trecho de transcrição de reunião, tópicos de briefing ou cadeia de texto
+ * em Fases, Telas (com mini-wireframe inferido), Decisões (SIM/NÃO), APIs, Tabelas DB e Post-its.
+ */
+export function parseTranscriptToFlowNodes(
+  transcript: string,
+  existingNodes: BriefingNode[]
+): { nodes: BriefingNode[]; edges: BriefingEdge[] } {
+  const rawChunks = transcript
+    .split(/\n+|->|➔|=>|;|\.(?=\s+[A-ZÀ-Ú0-9])/g)
+    .map((s) => s.replace(/^[-*•\d.)\s]+/, "").trim())
+    .filter((s) => s.length >= 3);
+
+  if (rawChunks.length === 0) return { nodes: [], edges: [] };
+
+  const maxY =
+    existingNodes.length > 0
+      ? Math.max(...existingNodes.map((n) => n.position.y)) + 320
+      : 120;
+  const startX = 120;
+
+  const createdNodes: BriefingNode[] = [];
+  const createdEdges: BriefingEdge[] = [];
+
+  // Create a wrapping Section/Phase when 3+ steps are generated from a meeting transcript
+  const sectionCount =
+    existingNodes.filter((n) => n.data.category === "section").length + 1;
+  const ts = Date.now();
+
+  if (rawChunks.length >= 2) {
+    const sectionWidth = Math.max(660, rawChunks.length * 320 + 80);
+    createdNodes.push({
+      id: `sec-transcript-${ts}`,
+      type: "section",
+      position: { x: startX - 40, y: maxY - 65 },
+      zIndex: -1,
+      style: { width: sectionWidth, height: 390 },
+      data: {
+        code: `FASE-0${sectionCount}`,
+        category: "section",
+        title: `FASE 0${sectionCount} · FLUXO GERADO DA REUNIÃO`,
+        subtitle: `Capturado automaticamente a partir da transcrição do briefing (${rawChunks.length} etapas)`,
+        sectionWidth,
+        sectionHeight: 390,
+      },
+    });
+  }
+
+  let flowStepIndex = 0;
+  let prevFlowNode: BriefingNode | null = null;
+
+  rawChunks.forEach((chunk, idx) => {
+    const lower = chunk.toLowerCase();
+    let category: NodeCategory = "screen";
+    let cleanTitle = chunk;
+
+    if (
+      lower.startsWith("decisão:") ||
+      lower.startsWith("decisao:") ||
+      lower.startsWith("se ") ||
+      lower.startsWith("caso ") ||
+      lower.includes("aprovado?") ||
+      lower.includes("válido?") ||
+      chunk.endsWith("?")
+    ) {
+      category = "decision";
+      cleanTitle = chunk.replace(/^(decis[aã]o|condi[cç][aã]o|regra):\s*/i, "");
+    } else if (
+      lower.startsWith("api:") ||
+      lower.startsWith("webhook:") ||
+      lower.startsWith("integração:") ||
+      lower.includes("webhook") ||
+      lower.includes("api ") ||
+      lower.includes("asaas") ||
+      lower.includes("stripe") ||
+      lower.includes("omie") ||
+      lower.includes("whatsapp")
+    ) {
+      category = "integration";
+      cleanTitle = chunk.replace(/^(api|webhook|integra[cç][aã]o):\s*/i, "");
+    } else if (
+      lower.startsWith("banco:") ||
+      lower.startsWith("db:") ||
+      lower.startsWith("tabela:") ||
+      lower.includes("salvar no banco") ||
+      lower.includes("tabela ") ||
+      lower.includes("supabase")
+    ) {
+      category = "database";
+      cleanTitle = chunk.replace(/^(banco|db|tabela):\s*/i, "");
+    } else if (
+      lower.startsWith("ação:") ||
+      lower.startsWith("acao:") ||
+      lower.startsWith("gatilho:") ||
+      lower.startsWith("clica ") ||
+      lower.startsWith("usuário clica") ||
+      lower.startsWith("vendedor envia")
+    ) {
+      category = "action";
+      cleanTitle = chunk.replace(/^(a[cç][aã]o|gatilho):\s*/i, "");
+    } else if (
+      lower.startsWith("nota:") ||
+      lower.startsWith("obs:") ||
+      lower.startsWith("postit:") ||
+      lower.startsWith("dúvida:")
+    ) {
+      category = "sticky";
+      cleanTitle = chunk.replace(/^(nota|obs|postit|d[uú]vida):\s*/i, "");
+    } else {
+      cleanTitle = chunk.replace(/^tela:\s*/i, "");
+    }
+
+    const prefixMap: Record<NodeCategory, string> = {
+      screen: "SCR",
+      action: "ACT",
+      decision: "DEC",
+      integration: "API",
+      database: "DB",
+      sticky: "NOTE",
+      shape: "SHP",
+      section: "FASE",
+      comment: "CMT",
+    };
+
+    const existingCount =
+      existingNodes.filter((n) => n.data.category === category).length +
+      createdNodes.filter((n) => n.data.category === category).length +
+      1;
+    const code = `${prefixMap[category]}-${String(existingCount).padStart(2, "0")}`;
+
+    const inferredFields: ScreenField[] = [];
+    if (category === "screen") {
+      if (lower.includes("login") || lower.includes("autentica")) {
+        inferredFields.push(
+          { id: `tf-${ts}-${idx}-1`, label: "E-mail Corporativo", kind: "input", required: true },
+          { id: `tf-${ts}-${idx}-2`, label: "Senha / Token SSO", kind: "input", required: true },
+          { id: `tf-${ts}-${idx}-3`, label: "Entrar no Sistema", kind: "button", required: true }
+        );
+      } else if (lower.includes("dashboard") || lower.includes("painel") || lower.includes("kpi")) {
+        inferredFields.push(
+          { id: `tf-${ts}-${idx}-1`, label: "KPI Receita & Conversão", kind: "kpi", required: true },
+          { id: `tf-${ts}-${idx}-2`, label: "Filtro por Período / Equipe", kind: "select", required: false },
+          { id: `tf-${ts}-${idx}-3`, label: "Gráfico de Evolução", kind: "chart", required: true }
+        );
+      } else if (lower.includes("kanban") || lower.includes("lista") || lower.includes("tabela") || lower.includes("pipeline")) {
+        inferredFields.push(
+          { id: `tf-${ts}-${idx}-1`, label: "Busca & Filtro Rápido", kind: "select", required: false },
+          { id: `tf-${ts}-${idx}-2`, label: " listagem / Quadro Kanban", kind: "table", required: true },
+          { id: `tf-${ts}-${idx}-3`, label: "Novo Registro", kind: "button", required: true }
+        );
+      } else {
+        inferredFields.push(
+          { id: `tf-${ts}-${idx}-1`, label: "Dados Principais da Etapa", kind: "input", required: true },
+          { id: `tf-${ts}-${idx}-2`, label: "Salvar e Avançar", kind: "button", required: true }
+        );
+      }
+    } else if (category === "database") {
+      inferredFields.push(
+        { id: `tf-${ts}-${idx}-1`, label: "id (uuid PK)", kind: "input", required: true },
+        { id: `tf-${ts}-${idx}-2`, label: "status (text)", kind: "select", required: true },
+        { id: `tf-${ts}-${idx}-3`, label: "payload (jsonb)", kind: "table", required: false }
+      );
+    }
+
+    const slug = cleanTitle
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 28);
+
+    const nodeId = `tr-${ts}-${idx}`;
+    const posX = startX + flowStepIndex * 320;
+    const posY = category === "sticky" ? maxY + 210 : maxY;
+    if (category !== "sticky") flowStepIndex++;
+
+    const newNode: BriefingNode = {
+      id: nodeId,
+      type: category,
+      position: { x: posX, y: posY },
+      data: {
+        code,
+        category,
+        title: cleanTitle.length > 54 ? `${cleanTitle.slice(0, 51)}...` : cleanTitle,
+        subtitle:
+          cleanTitle.length > 54
+            ? cleanTitle
+            : "Extraído automaticamente da transcrição do briefing",
+        actor: category === "integration" ? "Sistema" : "Usuário",
+        priority: "mvp",
+        status: "rascunho",
+        route: category === "screen" ? `/${slug || "tela"}` : undefined,
+        method: category === "integration" ? "POST" : undefined,
+        endpoint:
+          category === "integration" ? `POST /api/v1/${slug || "webhook"}` : undefined,
+        tableName:
+          category === "database"
+            ? `public.${slug.replace(/-/g, "_") || "registros"}`
+            : undefined,
+        stickyColor: category === "sticky" ? "amber" : undefined,
+        stickyTag: category === "sticky" ? "Fala do Cliente" : undefined,
+        fields: inferredFields.length > 0 ? inferredFields : undefined,
+        businessRules:
+          category === "decision"
+            ? ["SIM: Segue fluxo principal", "NÃO: Tratar exceção / alçada"]
+            : [],
+      },
+    };
+
+    createdNodes.push(newNode);
+
+    if (category !== "sticky") {
+      if (prevFlowNode) {
+        createdEdges.push({
+          id: `tre-${ts}-${idx}`,
+          source: prevFlowNode.id,
+          sourceHandle:
+            prevFlowNode.data.category === "decision" ? "yes" : undefined,
+          target: nodeId,
+          label: prevFlowNode.data.category === "decision" ? "SIM" : "Avança",
+          animated: true,
+        });
+      }
+      prevFlowNode = newNode;
+    }
+  });
+
+  return { nodes: createdNodes, edges: createdEdges };
+}
+

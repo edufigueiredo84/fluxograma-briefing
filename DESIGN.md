@@ -46,6 +46,12 @@ typography:
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "-0.01em"
+  chip:
+    fontFamily: "Azeret Mono, monospace"
+    fontSize: "0.625rem"
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: "-0.01em"
 rounded:
   sm: "4px"
   md: "8px"

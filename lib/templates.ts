@@ -2,64 +2,64 @@ import type { BoardProject } from "./types";
 
 export const BOARD_TEMPLATES: Record<string, BoardProject> = {
   "crm-funil": {
-    id: "crm-funil-b2b",
+    id: "crm-funil-b2b-v2",
     title: "Arquitetura CRM Comercial & Funil de Vendas",
     clientName: "Grupo Vértice Solar",
     systemType: "CRM & Automação Comercial",
-    version: "REV 02 · Briefing Inicial",
+    version: "REV 02",
     objective:
       "Unificar a entrada de leads dos anúncios e WhatsApp, qualificar automaticamente pelo consumo de energia (kWh) e guiar o vendedor até a geração do contrato e cobrança.",
-    updatedAt: "2026-10-23T16:15:00-03:00",
+    updatedAt: "2026-10-26T11:55:00-03:00",
     nodes: [
       {
         id: "sec-captacao",
         type: "section",
-        position: { x: 40, y: 50 },
+        position: { x: 40, y: 40 },
         zIndex: -1,
-        style: { width: 580, height: 610 },
+        style: { width: 760, height: 760 },
         data: {
           code: "FASE-01",
           category: "section",
           title: "FASE 01 · CAPTAÇÃO & TRIAGEM DE LEADS",
-          subtitle: "Entrada multicanal e enriquecimento automático",
-          sectionWidth: 580,
-          sectionHeight: 610,
+          subtitle: "Entrada multicanal e qualificação automática por corte de fatura",
+          sectionWidth: 760,
+          sectionHeight: 760,
         },
       },
       {
         id: "sec-qualificacao",
         type: "section",
-        position: { x: 660, y: 50 },
+        position: { x: 900, y: 40 },
         zIndex: -1,
-        style: { width: 640, height: 610 },
+        style: { width: 780, height: 760 },
         data: {
           code: "FASE-02",
           category: "section",
           title: "FASE 02 · QUALIFICAÇÃO & PIPELINE KANBAN",
-          subtitle: "Operação diária do SDR e Executivo de Contas",
-          sectionWidth: 640,
-          sectionHeight: 610,
+          subtitle: "Operação diária do SDR, pré-proposta rápida e persistência no banco",
+          sectionWidth: 780,
+          sectionHeight: 760,
         },
       },
       {
         id: "sec-fechamento",
         type: "section",
-        position: { x: 1340, y: 50 },
+        position: { x: 1780, y: 40 },
         zIndex: -1,
-        style: { width: 620, height: 610 },
+        style: { width: 760, height: 760 },
         data: {
           code: "FASE-03",
           category: "section",
           title: "FASE 03 · PROPOSTA, CONTRATO & ERP",
-          subtitle: "Geração de PDF técnico, assinatura e provisionamento",
-          sectionWidth: 620,
-          sectionHeight: 610,
+          subtitle: "Simulação de payback, aprovação de alçada e assinatura digital",
+          sectionWidth: 760,
+          sectionHeight: 760,
         },
       },
       {
         id: "api-meta",
         type: "integration",
-        position: { x: 80, y: 130 },
+        position: { x: 88, y: 140 },
         data: {
           code: "API-01",
           category: "integration",
@@ -79,7 +79,7 @@ export const BOARD_TEMPLATES: Record<string, BoardProject> = {
       {
         id: "scr-captura",
         type: "screen",
-        position: { x: 80, y: 340 },
+        position: { x: 88, y: 380 },
         data: {
           code: "SCR-01",
           category: "screen",
@@ -104,7 +104,7 @@ export const BOARD_TEMPLATES: Record<string, BoardProject> = {
       {
         id: "dec-score",
         type: "decision",
-        position: { x: 370, y: 215 },
+        position: { x: 496, y: 260 },
         data: {
           code: "DEC-01",
           category: "decision",
@@ -122,7 +122,7 @@ export const BOARD_TEMPLATES: Record<string, BoardProject> = {
       {
         id: "scr-kanban",
         type: "screen",
-        position: { x: 700, y: 130 },
+        position: { x: 948, y: 140 },
         data: {
           code: "SCR-02",
           category: "screen",
@@ -155,9 +155,25 @@ export const BOARD_TEMPLATES: Record<string, BoardProject> = {
         },
       },
       {
+        id: "sticky-reuniao",
+        type: "sticky",
+        position: { x: 948, y: 548 },
+        data: {
+          code: "NOTE-01",
+          category: "sticky",
+          title: "Fala do Cliente na Reunião",
+          description:
+            "\"Hoje perdemos 30% dos leads porque o vendedor demora 4 horas para calcular quantos painéis cabem no telhado. O sistema precisa sugerir o kit sozinho!\"",
+          stickyColor: "amber",
+          stickyTag: "Dor Principal · Briefing",
+          actor: "Diretor Comercial",
+          priority: "mvp",
+        },
+      },
+      {
         id: "act-whatsapp",
         type: "action",
-        position: { x: 1030, y: 150 },
+        position: { x: 1372, y: 140 },
         data: {
           code: "ACT-01",
           category: "action",
@@ -172,25 +188,9 @@ export const BOARD_TEMPLATES: Record<string, BoardProject> = {
         },
       },
       {
-        id: "sticky-reuniao",
-        type: "sticky",
-        position: { x: 710, y: 440 },
-        data: {
-          code: "NOTE-01",
-          category: "sticky",
-          title: "Fala do Cliente na Reunião",
-          description:
-            "\"Hoje perdemos 30% dos leads porque o vendedor demora 4 horas para calcular quantos painéis cabem no telhado. O sistema precisa sugerir o kit sozinho!\"",
-          stickyColor: "amber",
-          stickyTag: "Dor Principal · Briefing",
-          actor: "Diretor Comercial",
-          priority: "mvp",
-        },
-      },
-      {
         id: "db-deals",
         type: "database",
-        position: { x: 1030, y: 370 },
+        position: { x: 1372, y: 456 },
         data: {
           code: "DB-01",
           category: "database",
@@ -211,12 +211,12 @@ export const BOARD_TEMPLATES: Record<string, BoardProject> = {
       {
         id: "scr-proposta",
         type: "screen",
-        position: { x: 1380, y: 130 },
+        position: { x: 1828, y: 140 },
         data: {
           code: "SCR-03",
           category: "screen",
           title: "Gerador de Proposta & Payback",
-          subtitle: "Tela de composição de preço, margem, financiamento e PDF interativo",
+          subtitle: "Composição de preço, margem, financiamento e PDF interativo",
           actor: "Executivo de Contas",
           priority: "mvp",
           route: "/crm/propostas/[id]",
@@ -245,7 +245,7 @@ export const BOARD_TEMPLATES: Record<string, BoardProject> = {
       {
         id: "api-assinatura",
         type: "integration",
-        position: { x: 1380, y: 420 },
+        position: { x: 2232, y: 200 },
         data: {
           code: "API-02",
           category: "integration",

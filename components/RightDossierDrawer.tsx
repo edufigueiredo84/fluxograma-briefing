@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Sliders,
   FileText,
@@ -19,6 +19,9 @@ import {
   Layers,
   FolderOpen,
   FilePlus2,
+  Monitor,
+  ArrowRight,
+  ListChecks,
 } from "lucide-react";
 import type {
   BoardProject,
@@ -31,6 +34,8 @@ import type {
 import {
   compileBoardToPRD,
   compileBoardToAIPrompt,
+  compileBoardToSQLAndPrisma,
+  compileBoardToTasks,
   compilePhaseToMarkdown,
   getNodesInSection,
 } from "@/lib/prd-compiler";
@@ -97,8 +102,18 @@ export function RightDossierDrawer({
     isClientMode ? board.clientName || "Cliente" : "Consultor"
   );
   const [commentText, setCommentText] = useState("");
-  const [prdFormat, setPrdFormat] = useState<"prd" | "prompt" | "json">("prd");
+  const [prdFormat, setPrdFormat] = useState<
+    "prd" | "prompt" | "sql" | "tasks" | "json"
+  >("prd");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showScreenPrototype, setShowScreenPrototype] = useState(false);
+
+  useEffect(() => {
+    const onPreview = () => setShowScreenPrototype(true);
+    window.addEventListener("briefing-screen-preview", onPreview);
+    return () =>
+      window.removeEventListener("briefing-screen-preview", onPreview);
+  }, []);
 
   const triggerCopy = (key: string, value: string) => {
     navigator.clipboard.writeText(value);
@@ -199,10 +214,14 @@ export function RightDossierDrawer({
       ? compileBoardToPRD(board)
       : prdFormat === "prompt"
       ? compileBoardToAIPrompt(board)
+      : prdFormat === "sql"
+      ? compileBoardToSQLAndPrisma(board)
+      : prdFormat === "tasks"
+      ? compileBoardToTasks(board)
       : JSON.stringify(board, null, 2);
 
   const handleDownloadFile = (
-    ext: "md" | "json",
+    ext: "md" | "json" | "sql",
     customContent?: string,
     customFilename?: string
   ) => {
@@ -494,27 +513,182 @@ export function RightDossierDrawer({
                       </h2>
                     </div>
 
-                    {!isClientMode && (
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
+                      {selectedNode.data.category === "screen" && (
                         <button
                           type="button"
-                          title="Duplicar Bloco"
-                          onClick={() => onDuplicateNode(selectedNode.id)}
-                          className="p-1.5 text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] rounded-[6px] border border-[var(--rule-hairline)]"
+                          title={
+                            showScreenPrototype
+                              ? "Voltar aos campos do inspetor"
+                              : "Simular Protótipo Wireframe da Tela"
+                          }
+                          onClick={() => setShowScreenPrototype((v) => !v)}
+                          className={`px-2 py-1 rounded-[6px] font-mono text-[10px] font-semibold border flex items-center gap-1 transition-colors ${
+                            showScreenPrototype
+                              ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF]"
+                              : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)] hover:bg-[var(--bg-hover)]"
+                          }`}
                         >
-                          <Copy className="w-3.5 h-3.5" />
+                          <Monitor className="w-3 h-3" />
+                          <span>{showScreenPrototype ? "Editar" : "Protótipo"}</span>
                         </button>
-                        <button
-                          type="button"
-                          title="Excluir Bloco"
-                          onClick={() => onDeleteNode(selectedNode.id)}
-                          className="p-1.5 text-[#E54D2E] hover:bg-[#D9381E]/20 rounded-[6px] border border-[#D9381E]/40"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      )}
+                      {!isClientMode && (
+                        <>
+                          <button
+                            type="button"
+                            title="Duplicar Bloco"
+                            onClick={() => onDuplicateNode(selectedNode.id)}
+                            className="p-1.5 text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] rounded-[6px] border border-[var(--rule-hairline)]"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Excluir Bloco"
+                            onClick={() => onDeleteNode(selectedNode.id)}
+                            className="p-1.5 text-[#E54D2E] hover:bg-[#D9381E]/20 rounded-[6px] border border-[#D9381E]/40"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Interactive Low-Fi Screen Prototype Preview (Fase 3) */}
+                  {selectedNode.data.category === "screen" &&
+                    showScreenPrototype && (
+                      <div className="bg-[var(--bg-subcard)] border border-[#3B66FF]/50 rounded-[10px] overflow-hidden space-y-2.5">
+                        {/* Simulated Browser Bar */}
+                        <div className="px-3 py-2 bg-[#16181D] text-[#FAF8F4] flex items-center justify-between gap-2 border-b border-[var(--rule-hairline)]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-[#D9381E]" />
+                            <span className="w-2 h-2 rounded-full bg-[#F5C542]" />
+                            <span className="w-2 h-2 rounded-full bg-[#0F766E]" />
+                          </div>
+                          <span className="font-mono text-[10px] px-2 py-0.5 bg-white/10 rounded-[4px] text-[#DCE6FF] truncate flex-1 text-center">
+                            app.cliente.com{selectedNode.data.route || "/tela"}
+                          </span>
+                          <span className="font-mono text-[10px] text-[#9CA4B4]">
+                            {selectedNode.data.actor || "Usuário"}
+                          </span>
+                        </div>
+
+                        {/* Simulated Screen Body */}
+                        <div className="p-3 space-y-2.5">
+                          <div className="border-b border-[var(--rule-hairline)] pb-2">
+                            <p className="text-[13px] font-bold text-[var(--ink-primary)]">
+                              {selectedNode.data.title}
+                            </p>
+                            {selectedNode.data.subtitle && (
+                              <p className="text-[11px] text-[var(--ink-secondary)]">
+                                {selectedNode.data.subtitle}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            {(selectedNode.data.fields || []).map((f) => {
+                              if (f.kind === "kpi") {
+                                return (
+                                  <div
+                                    key={f.id}
+                                    className="p-2.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[8px] flex items-center justify-between"
+                                  >
+                                    <div>
+                                      <span className="block font-mono text-[10px] text-[var(--ink-secondary)] uppercase">
+                                        {f.label}
+                                      </span>
+                                      <span className="font-mono text-[14px] font-bold text-[var(--ink-primary)] tabular-nums">
+                                        R$ 148.920
+                                      </span>
+                                    </div>
+                                    <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[#0F766E]/20 text-[#2DD4BF] rounded-[4px]">
+                                      +18.4%
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              if (f.kind === "table" || f.kind === "chart") {
+                                return (
+                                  <div
+                                    key={f.id}
+                                    className="p-2.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[8px] space-y-1.5"
+                                  >
+                                    <div className="flex items-center justify-between font-mono text-[10px] text-[var(--ink-secondary)]">
+                                      <span>{f.label.toUpperCase()}</span>
+                                      <span>3 colunas · Ao vivo</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                      {["Etapa 01", "Etapa 02", "Concluído"].map(
+                                        (col, ci) => (
+                                          <div
+                                            key={ci}
+                                            className="p-1.5 bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[5px] space-y-1"
+                                          >
+                                            <span className="block font-mono text-[10px] text-[var(--ink-secondary)]">
+                                              {col}
+                                            </span>
+                                            <div className="h-3 bg-[#1B4DFF]/25 rounded-[2px]" />
+                                            <div className="h-3 bg-[var(--bg-panel)] rounded-[2px]" />
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              if (f.kind === "button") {
+                                const outEdge = board.edges.find(
+                                  (e) => e.source === selectedNode.id
+                                );
+                                const nextNode = outEdge
+                                  ? board.nodes.find(
+                                      (n) => n.id === outEdge.target
+                                    )
+                                  : null;
+                                return (
+                                  <button
+                                    key={f.id}
+                                    type="button"
+                                    onClick={() => {
+                                      if (nextNode) onSelectNodeById(nextNode.id);
+                                    }}
+                                    className="w-full py-2 px-3 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[6px] text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                                  >
+                                    <span>{f.label}</span>
+                                    {nextNode && (
+                                      <span className="font-mono text-[10px] opacity-85 inline-flex items-center gap-0.5">
+                                        ➔ {nextNode.data.code}
+                                        <ArrowRight className="w-3 h-3" />
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              }
+                              return (
+                                <div key={f.id} className="space-y-1">
+                                  <label className="block font-mono text-[10px] text-[var(--ink-secondary)]">
+                                    {f.label}{" "}
+                                    {f.required && (
+                                      <span className="text-[#D9381E]">*</span>
+                                    )}
+                                  </label>
+                                  <div className="px-2.5 py-1.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[6px] text-[11px] text-[var(--ink-secondary)] font-mono">
+                                    {f.kind === "select"
+                                      ? "Selecionar opção... ▾"
+                                      : f.kind === "upload"
+                                      ? "Arraste arquivo ou clique para enviar"
+                                      : `Digite ${f.label.toLowerCase()}...`}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
-                  </div>
 
                   {/* Title & Subtitle */}
                   <div className="space-y-2.5">
@@ -1050,40 +1224,64 @@ export function RightDossierDrawer({
 
               {/* Format Switcher (when full board is selected) */}
               {selectedPhaseId === "all" && (
-                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                <div className="grid grid-cols-5 gap-1 pt-1">
                   <button
                     type="button"
                     onClick={() => setPrdFormat("prd")}
-                    className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
+                    className={`py-1.5 px-1.5 rounded-[6px] font-mono text-[10px] border transition-colors ${
                       prdFormat === "prd"
                         ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
                         : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
                     }`}
                   >
-                    PRD Markdown
+                    PRD .MD
                   </button>
                   <button
                     type="button"
                     onClick={() => setPrdFormat("prompt")}
-                    className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border flex items-center justify-center gap-1 ${
+                    className={`py-1.5 px-1.5 rounded-[6px] font-mono text-[10px] border flex items-center justify-center gap-0.5 transition-colors ${
                       prdFormat === "prompt"
                         ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
                         : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
                     }`}
                   >
-                    <Sparkles className="w-3 h-3" />
-                    Prompt Dev
+                    <Sparkles className="w-2.5 h-2.5" />
+                    Prompt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrdFormat("sql")}
+                    className={`py-1.5 px-1.5 rounded-[6px] font-mono text-[10px] border flex items-center justify-center gap-0.5 transition-colors ${
+                      prdFormat === "sql"
+                        ? "bg-[#0F766E] text-[#FAF8F4] border-[#0F766E] font-semibold"
+                        : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
+                    }`}
+                  >
+                    <Database className="w-2.5 h-2.5" />
+                    SQL/DB
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrdFormat("tasks")}
+                    className={`py-1.5 px-1.5 rounded-[6px] font-mono text-[10px] border flex items-center justify-center gap-0.5 transition-colors ${
+                      prdFormat === "tasks"
+                        ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                        : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
+                    }`}
+                  >
+                    <ListChecks className="w-2.5 h-2.5" />
+                    Tasks
                   </button>
                   <button
                     type="button"
                     onClick={() => setPrdFormat("json")}
-                    className={`py-1.5 px-2 rounded-[6px] font-mono text-[11px] border ${
+                    className={`py-1.5 px-1.5 rounded-[6px] font-mono text-[10px] border transition-colors ${
                       prdFormat === "json"
                         ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
                         : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)]"
                     }`}
                   >
-                    JSON Grafo
+                    JSON
                   </button>
                 </div>
               )}
@@ -1103,7 +1301,7 @@ export function RightDossierDrawer({
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      Copiar Markdown / Prompt
+                      Copiar Especificação
                     </>
                   )}
                 </button>
@@ -1117,14 +1315,18 @@ export function RightDossierDrawer({
                       ? `${board.id}-${(
                           phaseNode.data.code || "fase"
                         ).toLowerCase()}`
+                      : prdFormat === "sql"
+                      ? `${board.id}-migration`
+                      : prdFormat === "tasks"
+                      ? `${board.id}-backlog-tasks`
                       : board.id;
-                    handleDownloadFile(
+                    const ext =
                       selectedPhaseId === "all" && prdFormat === "json"
                         ? "json"
-                        : "md",
-                      compiledOutput,
-                      fname
-                    );
+                        : selectedPhaseId === "all" && prdFormat === "sql"
+                        ? "sql"
+                        : "md";
+                    handleDownloadFile(ext, compiledOutput, fname);
                   }}
                   className="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-[var(--bg-subcard)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-strong)] text-[12px] font-semibold rounded-[8px]"
                 >
@@ -1132,6 +1334,8 @@ export function RightDossierDrawer({
                   Baixar .
                   {selectedPhaseId === "all" && prdFormat === "json"
                     ? "json"
+                    : selectedPhaseId === "all" && prdFormat === "sql"
+                    ? "sql"
                     : "md"}
                 </button>
               </div>

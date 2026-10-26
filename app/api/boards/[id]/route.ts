@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import type { BoardProject } from "@/lib/types";
-import { BOARD_TEMPLATES } from "@/lib/templates";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -50,12 +49,7 @@ export async function GET(
       return NextResponse.json({ source: "local", board: store[id] });
     }
   } catch {
-    // fallback to templates
-  }
-
-  const fromTemplate = Object.values(BOARD_TEMPLATES).find((t) => t.id === id);
-  if (fromTemplate) {
-    return NextResponse.json({ source: "template", board: fromTemplate });
+    // ignore
   }
 
   return NextResponse.json({ error: "Projeto não encontrado" }, { status: 404 });

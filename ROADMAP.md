@@ -23,31 +23,33 @@ Este roadmap organiza a evolução do **Planta · Estúdio de Fluxograma, Briefi
 
 ---
 
-## Fase 2 — Inteligência Artificial & Colaboração em Tempo Real (Próximos Passos)
+## Fase 2 — Inteligência Artificial & Velocidade Operacional (Concluído ✓)
 
-- [ ] **Transcrição de Call / Áudio para Fluxograma Ao Vivo**:
-  - [ ] Conectar API de voz/LLM (Gemini API) para colar um trecho da transcrição da reunião com o cliente e transformar automaticamente em Fases, Telas, Decisões e Post-its no canvas.
+- [x] **Header Minimalista & Barra de Ferramentas em Ícones**:
+  - [x] Consolidação das ações secundárias (`Buscar / Ctrl+K`, `Transcrição IA`, `Meus Projetos & Templates`, `Visão Cliente`, `Exportar PNG`, `Compartilhar Nuvem`, `Limpar / Desfazer` e `Tema Claro/Escuro`) em uma dock de ícones técnicos, deixando **`Compilar PRD`** como único CTA textual primário no topo.
+- [x] **Transcrição de Call / Texto Livre para Fluxograma Ao Vivo**:
+  - [x] Conversor inteligente (`Ctrl+K` ➔ *Transcrição ➔ Fluxo* ou ícone de varinha mágica no header) que transforma trechos de conversa da reunião em Fase (`FASE`), Telas (`SCR`) com campos inferidos, Decisões (`DEC`), APIs (`API`), Tabelas (`DB`) e Post-its (`NOTE`).
+- [x] **Atalhos de Teclado Avançados & Paleta de Comando Rápido (`Ctrl+K`)**:
+  - [x] Paleta flutuante para buscar qualquer tela pelo código (`SCR-02`), rota ou ator, filtrar apenas blocos com `! Com Dúvida`, `MVP` ou `✓ Validados`, e alternar templates rapidamente.
+
+---
+
+## Fase 3 — Geração de Protótipos, SQL/Prisma & Gestão de Tarefas (Concluído ✓)
+
+- [x] **Preview de Wireframe Expandido & Interativo por Tela**:
+  - [x] Botão de expansão em cada bloco de `Tela (SCR)` e no Inspetor (`Protótipo`) que renderiza o navegador simulado com rota, KPIs, Kanban/tabelas, inputs e botões interativos conectados à próxima tela do fluxo.
+- [x] **Exportação de Tasks para Linear, Jira, Trello e GitHub Issues**:
+  - [x] Compilador `Tasks` na aba `Dossiê PRD` que converte cada Fase (`FASE-01`, `FASE-02`) em Épico/Milestone e cada `Tela`/`API`/`DB` em Issue numerada (`TASK-01`...) com critérios de aceite (DoD).
+- [x] **Gerador de Migration SQL & Prisma Schema**:
+  - [x] Compilador `SQL/DB` na aba `Dossiê PRD` que gera script PostgreSQL/Supabase (`CREATE TABLE IF NOT EXISTS`) e modelos `schema.prisma` a partir das tabelas e telas mapeadas.
+
+---
+
+## Fase 4 — Portal de Aprovação do Cliente & Colaboração (Em Evolução)
+
+- [x] **Assinatura Rápida de Aprovação de Escopo por Fase**:
+  - [x] Botão de validação no cabeçalho de cada Fase (`FASE-01`, `FASE-02`) para aprovar e marcar todos os blocos contidos na fase como `Validado (OK)` de uma só vez.
 - [ ] **Colaboração Multiplayer em Tempo Real (Supabase Realtime)**:
-  - [ ] Cursores ao vivo de múltiplos participantes e sincronização instantânea de comentários do cliente via `supabase.channel('board-room')`.
-- [ ] **Atalhos de Teclado Avançados & Comando Rápido (`Ctrl+K`)**:
-  - [ ] Paleta de comandos para buscar qualquer tela pelo código (`SCR-02`), filtrar apenas blocos com `Dúvida` ou filtrar apenas itens `MVP`.
-
----
-
-## Fase 3 — Geração de Protótipos & Integração com Gestão de Tarefas
-
-- [ ] **Preview de Wireframe Expandido por Tela**:
-  - [ ] Ao clicar duas vezes em um bloco de `Tela (SCR)`, abrir uma visualização de protótipo de baixa/média fidelidade gerada a partir dos `fields` configurados (formulários, tabelas Kanban, gráficos e KPIs).
-- [ ] **Exportação de Tasks para Linear, Jira, Trello e GitHub Issues**:
-  - [ ] Converter automaticamente cada Fase (`FASE-01`, `FASE-02`) em um Épico/Milestone e cada `Tela`/`API`/`DB` em uma Issue com seus critérios de aceite e regras de negócio.
-- [ ] **Gerador de Migration SQL & Prisma Schema**:
-  - [ ] Compilar todos os nós do tipo `database` (`DB-01`, `DB-02`) diretamente em um arquivo `.sql` ou `schema.prisma` pronto para execução.
-
----
-
-## Fase 4 — Portal de Aprovação do Cliente & Versionamento
-
+  - [ ] Cursores ao vivo de múltiplos participantes via `supabase.channel('board-room')`.
 - [ ] **Histórico de Revisões (`REV 01`, `REV 02`, `REV 03`) com Diff Visual**:
   - [ ] Comparar duas versões do fluxograma para mostrar ao cliente o que entrou ou saiu do escopo entre reuniões.
-- [ ] **Assinatura de Aprovação de Escopo por Fase**:
-  - [ ] Permitir que o cliente clique em "Aprovar Escopo da Fase 01" no link compartilhado, gravando carimbo de data/hora, autor e hash do PRD aprovado no Supabase.
