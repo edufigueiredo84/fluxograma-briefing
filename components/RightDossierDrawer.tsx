@@ -29,6 +29,9 @@ import type {
   FlowNodeData,
   PriorityLevel,
   ScreenField,
+  ShapePaletteColor,
+  ShapeStrokeStyle,
+  ShapeVariant,
   StickyColor,
 } from "@/lib/types";
 import {
@@ -930,6 +933,114 @@ export function RightDossierDrawer({
                               {col.label}
                             </button>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Draw.io Shape Variant, Color & Stroke Style Controls */}
+                    {selectedNode.data.category === "shape" && (
+                      <div className="space-y-3 pt-1 border-t border-[var(--rule-hairline)]">
+                        <div>
+                          <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
+                            GEOMETRIA DA FORMA (DRAW.IO)
+                          </label>
+                          <select
+                            disabled={isClientMode}
+                            value={selectedNode.data.shapeVariant || "rectangle"}
+                            onChange={(e) =>
+                              onUpdateNodeData(selectedNode.id, {
+                                shapeVariant: e.target.value as ShapeVariant,
+                              })
+                            }
+                            className="w-full px-2.5 py-1.5 font-mono text-[11px] bg-[var(--bg-subcard)] border border-[var(--rule-hairline)] rounded-[6px] text-[var(--ink-primary)]"
+                          >
+                            <option value="rectangle">Retângulo / Processo</option>
+                            <option value="pill">Pílula / Início-Fim</option>
+                            <option value="diamond">Losango / Decisão</option>
+                            <option value="parallelogram">Paralelogramo / Entrada-Saída</option>
+                            <option value="hexagon">Hexágono / Preparação-Microsserviço</option>
+                            <option value="cylinder">Cilindro / Banco de Dados</option>
+                            <option value="cloud">Nuvem / Serviço Externo</option>
+                            <option value="document">Documento / Relatório</option>
+                            <option value="actor">Ator / Usuário (Stickman)</option>
+                            <option value="circle">Círculo / Conector</option>
+                            <option value="callout">Balão de Anotação (Callout)</option>
+                            <option value="text">Texto Livre no Canvas</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
+                            COR TÉCNICA DO BLOCO
+                          </label>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {(
+                              [
+                                { id: "default", label: "Padrão", dot: "#9CA4B4" },
+                                { id: "cobalt", label: "Cobalto", dot: "#1B4DFF" },
+                                { id: "emerald", label: "Esmeralda", dot: "#0F766E" },
+                                { id: "vermilion", label: "Vermelhão", dot: "#D9381E" },
+                                { id: "violet", label: "Violeta", dot: "#6D28D9" },
+                                { id: "amber", label: "Âmbar", dot: "#F5C542" },
+                                { id: "slate", label: "Ardósia", dot: "#4A4D55" },
+                              ] as const
+                            ).map((col) => (
+                              <button
+                                key={col.id}
+                                type="button"
+                                onClick={() =>
+                                  onUpdateNodeData(selectedNode.id, {
+                                    shapeColor: col.id as ShapePaletteColor,
+                                  })
+                                }
+                                className={`py-1 px-1.5 rounded-[5px] font-mono text-[10px] border flex items-center gap-1.5 transition-colors ${
+                                  (selectedNode.data.shapeColor || "default") ===
+                                  col.id
+                                    ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                                    : "bg-[var(--bg-subcard)] text-[var(--ink-primary)] border-[var(--rule-hairline)] hover:bg-[var(--bg-hover)]"
+                                }`}
+                              >
+                                <span
+                                  style={{ backgroundColor: col.dot }}
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                />
+                                <span className="truncate">{col.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-mono text-[10px] text-[var(--ink-secondary)] mb-1">
+                            TRAÇO DA BORDA
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {(
+                              [
+                                { id: "solid", label: "Contínuo" },
+                                { id: "dashed", label: "Tracejado" },
+                                { id: "dotted", label: "Pontilhado" },
+                              ] as const
+                            ).map((st) => (
+                              <button
+                                key={st.id}
+                                type="button"
+                                onClick={() =>
+                                  onUpdateNodeData(selectedNode.id, {
+                                    shapeStroke: st.id as ShapeStrokeStyle,
+                                  })
+                                }
+                                className={`py-1 px-2 rounded-[5px] font-mono text-[10px] border transition-colors ${
+                                  (selectedNode.data.shapeStroke || "solid") ===
+                                  st.id
+                                    ? "bg-[#1B4DFF] text-[#FAF8F4] border-[#1B4DFF] font-semibold"
+                                    : "bg-[var(--bg-subcard)] text-[var(--ink-secondary)] border-[var(--rule-hairline)] hover:text-[var(--ink-primary)]"
+                                }`}
+                              >
+                                {st.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}

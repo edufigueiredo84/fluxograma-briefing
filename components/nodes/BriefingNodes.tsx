@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
 import {
   Monitor,
   Zap,
@@ -24,8 +24,16 @@ import {
   Download,
   Sparkles,
   Maximize2,
+  Cloud,
+  FileText,
+  Hexagon,
 } from "lucide-react";
-import type { BriefingNode, FlowNodeData, ScreenField } from "@/lib/types";
+import type {
+  BriefingNode,
+  FlowNodeData,
+  ScreenField,
+  ShapePaletteColor,
+} from "@/lib/types";
 
 const PRIORITY_BADGE: Record<
   string,
@@ -613,41 +621,357 @@ export function StickyNode({ data, selected }: NodeProps<BriefingNode>) {
 }
 
 /**
- * 7. SHAPE NODE (Formas Livres estilo FigJam: Retângulo, Pílula, Losango, Cilindro)
+ * 7. SHAPE NODE (Formas Técnicas & Vetorizadas Estilo Draw.io / Diagrams.net)
+ * Suporta redimensionamento livre (NodeResizer), 4 portas direcionais (Top, Right, Bottom, Left),
+ * geometrias SVG técnicas (Losango, Cilindro DB, Paralelogramo I/O, Hexágono, Nuvem, Documento,
+ * Ator UML, Círculo, Retângulo, Pílula, Callout e Texto Livre) e paleta de cores semânticas.
  */
+const SHAPE_COLOR_PALETTE: Record<
+  ShapePaletteColor,
+  { fill: string; stroke: string; badgeBg: string; badgeText: string }
+> = {
+  default: {
+    fill: "var(--bg-card)",
+    stroke: "var(--rule-strong)",
+    badgeBg: "var(--bg-panel)",
+    badgeText: "var(--ink-secondary)",
+  },
+  cobalt: {
+    fill: "rgba(27, 77, 255, 0.14)",
+    stroke: "#1B4DFF",
+    badgeBg: "#1B4DFF",
+    badgeText: "#FAF8F4",
+  },
+  emerald: {
+    fill: "rgba(15, 118, 110, 0.16)",
+    stroke: "#0F766E",
+    badgeBg: "#0F766E",
+    badgeText: "#FAF8F4",
+  },
+  vermilion: {
+    fill: "rgba(217, 56, 30, 0.15)",
+    stroke: "#D9381E",
+    badgeBg: "#D9381E",
+    badgeText: "#FAF8F4",
+  },
+  violet: {
+    fill: "rgba(109, 40, 217, 0.16)",
+    stroke: "#6D28D9",
+    badgeBg: "#6D28D9",
+    badgeText: "#FAF8F4",
+  },
+  amber: {
+    fill: "rgba(245, 197, 66, 0.18)",
+    stroke: "#B45309",
+    badgeBg: "#B45309",
+    badgeText: "#FAF8F4",
+  },
+  slate: {
+    fill: "var(--bg-panel)",
+    stroke: "var(--ink-secondary)",
+    badgeBg: "var(--bg-subcard)",
+    badgeText: "var(--ink-primary)",
+  },
+};
+
 export function ShapeNode({ data, selected }: NodeProps<BriefingNode>) {
   const variant = data.shapeVariant || "rectangle";
+  const colorKey: ShapePaletteColor = data.shapeColor || "default";
+  const pal = SHAPE_COLOR_PALETTE[colorKey] || SHAPE_COLOR_PALETTE.default;
+  const strokeStyle = data.shapeStroke || "solid";
+  const strokeDasharray =
+    strokeStyle === "dashed"
+      ? "6 4"
+      : strokeStyle === "dotted"
+      ? "2 3"
+      : undefined;
+
+  const defaultDims: Record<string, { w: number; h: number }> = {
+    rectangle: { w: 200, h: 100 },
+    pill: { w: 190, h: 84 },
+    diamond: { w: 190, h: 136 },
+    cylinder: { w: 176, h: 128 },
+    parallelogram: { w: 210, h: 100 },
+    hexagon: { w: 200, h: 110 },
+    cloud: { w: 210, h: 120 },
+    document: { w: 190, h: 118 },
+    actor: { w: 136, h: 150 },
+    circle: { w: 124, h: 124 },
+    callout: { w: 210, h: 110 },
+    text: { w: 180, h: 64 },
+  };
+
+  const dims = defaultDims[variant] || { w: 200, h: 100 };
+  const width = data.shapeWidth || dims.w;
+  const height = data.shapeHeight || dims.h;
+
+  const activeStroke = selected ? "#3B66FF" : pal.stroke;
+  const strokeWidth = selected ? 2.25 : 1.75;
+
   return (
     <div
-      className={`min-w-[180px] max-w-[240px] px-4 py-3 bg-[var(--bg-card)] text-[var(--ink-primary)] border-2 text-center transition-colors ${
-        variant === "pill" ? "rounded-full" : "rounded-[12px]"
-      } ${
-        selected
-          ? "border-[#3B66FF] ring-2 ring-[#3B66FF]/30"
-          : "border-[var(--rule-strong)]"
-      }`}
+      style={{ minWidth: width, minHeight: height }}
+      className="relative w-full h-full flex items-center justify-center group select-none"
     >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={96}
+        minHeight={54}
+        lineClassName="!border-[#3B66FF]"
+        handleClassName="!w-2.5 !h-2.5 !bg-[#3B66FF] !border !border-[#FAF8F4] !rounded-[2px]"
+      />
+
+      {/* 4 Omni-Directional Draw.io Style Connection Ports (Target + Source) */}
       <Handle
+        id="top"
+        type="target"
+        position={Position.Top}
+        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[#3B66FF] opacity-80 group-hover:opacity-100"
+      />
+      <Handle
+        id="top-src"
+        type="source"
+        position={Position.Top}
+        className="!w-2.5 !h-2.5 !bg-[#3B66FF] !border-2 !border-[var(--bg-card)] opacity-0 group-hover:opacity-100"
+      />
+
+      <Handle
+        id="left"
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--rule-strong)]"
+        className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[#3B66FF]"
       />
-      <span className="font-mono text-[10px] text-[var(--ink-secondary)] block mb-0.5">
-        {data.code}
-      </span>
-      <p className="text-[13.5px] font-semibold text-[var(--ink-primary)] leading-snug">
-        {data.title}
-      </p>
-      {data.subtitle && (
-        <p className="text-[12px] text-[var(--ink-secondary)] mt-1">
-          {data.subtitle}
-        </p>
-      )}
+
       <Handle
+        id="right"
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-[var(--rule-strong)] !border-2 !border-[var(--bg-card)]"
+        className="!w-3 !h-3 !bg-[#3B66FF] !border-2 !border-[var(--bg-card)]"
       />
+
+      <Handle
+        id="bottom"
+        type="source"
+        position={Position.Bottom}
+        className="!w-2.5 !h-2.5 !bg-[#3B66FF] !border-2 !border-[var(--bg-card)] opacity-80 group-hover:opacity-100"
+      />
+      <Handle
+        id="bottom-tgt"
+        type="target"
+        position={Position.Bottom}
+        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[#3B66FF] opacity-0 group-hover:opacity-100"
+      />
+
+      {/* Vector Geometry Layer for Draw.io Shapes */}
+      {variant === "diamond" && (
+        <svg
+          viewBox="0 0 200 140"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <polygon
+            points="100,4 196,70 100,136 4,70"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+
+      {variant === "parallelogram" && (
+        <svg
+          viewBox="0 0 210 100"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <polygon
+            points="26,4 206,4 184,96 4,96"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+
+      {variant === "hexagon" && (
+        <svg
+          viewBox="0 0 200 110"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <polygon
+            points="30,4 170,4 196,55 170,106 30,106 4,55"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+
+      {variant === "cylinder" && (
+        <svg
+          viewBox="0 0 180 130"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <path
+            d="M 6,22 C 6,8 174,8 174,22 L 174,108 C 174,122 6,122 6,108 Z"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+          />
+          <ellipse
+            cx="90"
+            cy="22"
+            rx="84"
+            ry="14"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+          />
+        </svg>
+      )}
+
+      {variant === "cloud" && (
+        <svg
+          viewBox="0 0 220 130"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <path
+            d="M 52,106 C 24,106 10,88 18,66 C 12,44 34,26 58,32 C 74,10 116,10 134,30 C 160,20 192,36 194,62 C 212,72 208,106 180,106 Z"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+
+      {variant === "document" && (
+        <svg
+          viewBox="0 0 190 120"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <path
+            d="M 6,6 L 184,6 L 184,98 Q 140,118 95,98 Q 50,78 6,102 Z"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+
+      {variant === "callout" && (
+        <svg
+          viewBox="0 0 210 115"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <path
+            d="M 8,6 L 202,6 C 204,6 206,8 206,10 L 206,84 C 206,86 204,88 202,88 L 62,88 L 32,110 L 38,88 L 8,88 C 6,88 4,86 4,84 L 4,10 C 4,8 6,6 8,6 Z"
+            fill={pal.fill}
+            stroke={activeStroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+
+      {/* CSS Box Shapes (Rectangle, Pill, Circle, Text, Actor) */}
+      {(variant === "rectangle" ||
+        variant === "pill" ||
+        variant === "circle" ||
+        variant === "text" ||
+        variant === "actor") && (
+        <div
+          style={{
+            backgroundColor:
+              variant === "text" || variant === "actor"
+                ? "transparent"
+                : pal.fill,
+            borderColor:
+              variant === "text" && !selected ? "transparent" : activeStroke,
+            borderStyle: strokeStyle,
+            borderWidth: variant === "text" && !selected ? 0 : strokeWidth,
+          }}
+          className={`absolute inset-0 pointer-events-none transition-colors ${
+            variant === "pill" || variant === "circle"
+              ? "rounded-full"
+              : "rounded-[10px]"
+          } ${selected ? "ring-2 ring-[#3B66FF]/30" : ""}`}
+        />
+      )}
+
+      {/* Inner Content Layer */}
+      <div
+        className={`relative z-10 w-full h-full flex flex-col items-center justify-center text-center ${
+          variant === "diamond"
+            ? "px-8 py-5"
+            : variant === "cylinder"
+            ? "pt-7 pb-3 px-4"
+            : variant === "callout"
+            ? "pb-6 pt-3 px-4"
+            : "px-4 py-3"
+        }`}
+      >
+        {variant === "actor" && (
+          <svg
+            viewBox="0 0 64 76"
+            className="w-12 h-14 mb-1 shrink-0"
+            fill="none"
+            stroke={activeStroke}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="32" cy="14" r="10" fill={pal.fill} />
+            <line x1="32" y1="24" x2="32" y2="50" />
+            <line x1="12" y1="34" x2="52" y2="34" />
+            <line x1="32" y1="50" x2="16" y2="72" />
+            <line x1="32" y1="50" x2="48" y2="72" />
+          </svg>
+        )}
+
+        {variant !== "text" && data.code && (
+          <span
+            style={{
+              backgroundColor: pal.badgeBg,
+              color: pal.badgeText,
+            }}
+            className="font-mono text-[10px] font-semibold px-1.5 py-0.2 rounded-[3px] mb-1 tabular-nums tracking-tight"
+          >
+            {data.code}
+          </span>
+        )}
+
+        <p
+          className={`font-semibold text-[var(--ink-primary)] leading-snug break-words max-w-full ${
+            variant === "text" ? "text-[14px] font-bold" : "text-[13px]"
+          }`}
+        >
+          {data.title}
+        </p>
+
+        {data.subtitle && (
+          <p className="text-[11px] text-[var(--ink-secondary)] mt-0.5 leading-snug line-clamp-2 max-w-full">
+            {data.subtitle}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -675,13 +999,20 @@ export function SectionNode({ id, data, selected }: NodeProps<BriefingNode>) {
 
   return (
     <div
-      style={{ width, height }}
-      className={`rounded-[14px] border border-dashed transition-colors pointer-events-all ${
+      style={{ minWidth: width, minHeight: height }}
+      className={`w-full h-full rounded-[14px] border border-dashed transition-colors pointer-events-all relative ${
         selected
           ? "border-[#3B66FF] bg-[#3B66FF]/[0.06]"
           : "border-[var(--rule-strong)] bg-[var(--bg-panel)]/55"
       }`}
     >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={320}
+        minHeight={220}
+        lineClassName="!border-[#3B66FF]"
+        handleClassName="!w-2.5 !h-2.5 !bg-[#3B66FF] !border !border-[#FAF8F4] !rounded-[2px]"
+      />
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-dashed border-[var(--rule-strong)] bg-[var(--bg-panel)]/95 rounded-t-[13px]">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="font-mono text-[11px] font-semibold px-2 py-0.5 bg-[#1B4DFF] text-[#FAF8F4] rounded-[4px] tabular-nums shrink-0">

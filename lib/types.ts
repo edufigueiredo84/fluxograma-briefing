@@ -1,5 +1,7 @@
 import type { Node, Edge } from "@xyflow/react";
 
+export type StudioMode = "briefing" | "drawio";
+
 export type NodeCategory =
   | "screen"
   | "action"
@@ -13,7 +15,30 @@ export type NodeCategory =
 
 export type PriorityLevel = "mvp" | "fase2" | "desejavel" | "fora";
 
-export type ShapeVariant = "rectangle" | "pill" | "diamond" | "cylinder";
+export type ShapeVariant =
+  | "rectangle"
+  | "pill"
+  | "diamond"
+  | "cylinder"
+  | "parallelogram"
+  | "hexagon"
+  | "cloud"
+  | "document"
+  | "actor"
+  | "circle"
+  | "text"
+  | "callout";
+
+export type ShapePaletteColor =
+  | "default"
+  | "cobalt"
+  | "emerald"
+  | "vermilion"
+  | "violet"
+  | "amber"
+  | "slate";
+
+export type ShapeStrokeStyle = "solid" | "dashed" | "dotted";
 
 export type StickyColor = "amber" | "coral" | "mint" | "sky";
 
@@ -34,7 +59,7 @@ export interface NodeComment {
 }
 
 export interface FlowNodeData extends Record<string, unknown> {
-  code: string; // e.g., SCR-01, DEC-02
+  code: string; // e.g., SCR-01, DEC-02, SHP-01
   category: NodeCategory;
   title: string;
   subtitle?: string;
@@ -50,6 +75,10 @@ export interface FlowNodeData extends Record<string, unknown> {
   stickyColor?: StickyColor;
   stickyTag?: string; // e.g., "Fala do Cliente", "Dúvida", "Regra Crítica"
   shapeVariant?: ShapeVariant;
+  shapeColor?: ShapePaletteColor;
+  shapeStroke?: ShapeStrokeStyle;
+  shapeWidth?: number;
+  shapeHeight?: number;
   sectionWidth?: number;
   sectionHeight?: number;
   comments?: NodeComment[];
@@ -60,13 +89,17 @@ export type BriefingNode = Node<FlowNodeData>;
 export type BriefingEdge = Edge<{
   label?: string;
   condition?: "yes" | "no" | "default";
+  edgeRouting?: "smoothstep" | "bezier" | "straight";
+  edgeDashed?: boolean;
+  edgeColor?: ShapePaletteColor;
 }>;
 
 export interface BoardProject {
   id: string;
   title: string;
   clientName: string;
-  systemType: string; // e.g., "CRM & Funil Comercial", "SaaS / Portal", "Dashboard Operacional"
+  systemType: string; // e.g., "CRM & Funil Comercial", "SaaS / Portal", "Diagrama de Arquitetura"
+  studioMode?: StudioMode;
   version: string;
   objective: string;
   updatedAt: string;

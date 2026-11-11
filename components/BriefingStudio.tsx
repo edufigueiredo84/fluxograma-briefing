@@ -44,6 +44,16 @@ import {
   Search,
   Wand2,
   LayoutGrid,
+  Diamond,
+  Circle,
+  Cloud,
+  Hexagon,
+  User,
+  Type,
+  MessageSquare,
+  Compass,
+  FolderOpen,
+  Layers,
 } from "lucide-react";
 import { BRIEFING_NODE_TYPES } from "@/components/nodes/BriefingNodes";
 import {
@@ -62,6 +72,9 @@ import type {
   BriefingNode,
   FlowNodeData,
   NodeCategory,
+  ShapePaletteColor,
+  ShapeVariant,
+  StudioMode,
 } from "@/lib/types";
 
 const DEFAULT_EDGE_STYLE = {
@@ -71,7 +84,8 @@ const DEFAULT_EDGE_STYLE = {
 
 function styleEdges(
   edges: BriefingEdge[],
-  isDark = true
+  isDark = true,
+  routingOverride?: "smoothstep" | "bezier" | "straight"
 ): BriefingEdge[] {
   return edges.map((e) => {
     const isYes =
@@ -97,9 +111,14 @@ function styleEdges(
       ? "#4D7CFE"
       : "#1B4DFF";
 
+    const edgeType =
+      routingOverride ||
+      (e.type as "smoothstep" | "bezier" | "straight" | undefined) ||
+      "smoothstep";
+
     return {
       ...e,
-      type: "smoothstep",
+      type: edgeType === "bezier" ? "default" : edgeType,
       style: {
         stroke: strokeColor,
         strokeWidth: 2,
@@ -188,6 +207,11 @@ export function BriefingStudio() {
     "all" | "duvida" | "mvp" | "validado"
   >("all");
   const [transcriptText, setTranscriptText] = useState("");
+  const [studioMode, setStudioMode] = useState<StudioMode>("briefing");
+  const [modeLauncherOpen, setModeLauncherOpen] = useState<boolean>(true);
+  const [edgeRoutingStyle, setEdgeRoutingStyle] = useState<
+    "smoothstep" | "bezier" | "straight"
+  >("smoothstep");
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const sectionDragRef = useRef<{
@@ -218,10 +242,12 @@ export function BriefingStudio() {
     }
   }, []);
 
-  // Re-style edge labels whenever theme toggles
+  // Re-style edge labels whenever theme or edge routing style toggles
   useEffect(() => {
-    setEdges((eds) => styleEdges(eds, theme === "dark"));
-  }, [theme, setEdges]);
+    setEdges((eds) =>
+      styleEdges(eds, theme === "dark", edgeRoutingStyle)
+    );
+  }, [theme, edgeRoutingStyle, setEdges]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
@@ -240,6 +266,10 @@ export function BriefingStudio() {
     if (savedTheme === "light" || savedTheme === "dark") {
       setTheme(savedTheme);
     }
+    const savedStudioMode = window.localStorage.getItem("briefing_studio_mode");
+    if (savedStudioMode === "briefing" || savedStudioMode === "drawio") {
+      setStudioMode(savedStudioMode);
+    }
     const storedKey =
       window.localStorage.getItem("briefing_supabase_anon_key") || "";
     if (storedKey) setAnonKey(storedKey);
@@ -248,13 +278,21 @@ export function BriefingStudio() {
     const params = new URLSearchParams(window.location.search);
     const boardParam = params.get("board");
     const modeParam = params.get("mode");
+    const studioParam = params.get("studio");
+
+    if (studioParam === "drawio" || studioParam === "briefing") {
+      setStudioMode(studioParam);
+      setModeLauncherOpen(false);
+    }
 
     if (modeParam === "client") {
       setIsClientMode(true);
       setActiveTab("comments");
+      setModeLauncherOpen(false);
     }
 
     if (boardParam) {
+      setModeLauncherOpen(false);
       fetch(`/api/boards/${encodeURIComponent(boardParam)}`, {
         headers: storedKey ? { "x-supabase-key": storedKey } : {},
       })
@@ -262,11 +300,13 @@ export function BriefingStudio() {
         .then((res) => {
           if (res && res.board) {
             const b: BoardProject = res.board;
+            if (b.studioMode) setStudioMode(b.studioMode);
             setBoardMeta({
               id: b.id,
               title: b.title,
               clientName: b.clientName,
               systemType: b.systemType,
+              studioMode: b.studioMode,
               version: b.version,
               objective: b.objective,
               updatedAt: b.updatedAt,
@@ -287,11 +327,13 @@ export function BriefingStudio() {
           if (parsed && LEGACY_TEMPLATE_IDS.has(parsed.id)) {
             window.localStorage.removeItem("briefing_current_board");
           } else if (parsed && parsed.nodes && parsed.nodes.length > 0) {
+            if (parsed.studioMode) setStudioMode(parsed.studioMode);
             setBoardMeta({
               id: parsed.id,
               title: parsed.title,
               clientName: parsed.clientName,
               systemType: parsed.systemType,
+              studioMode: parsed.studioMode,
               version: parsed.version,
               objective: parsed.objective,
               updatedAt: parsed.updatedAt,
@@ -304,7 +346,50 @@ export function BriefingStudio() {
         }
       }
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, refreshSavedBoards]);
+
+  const handleSelectStudioMode = useCallback(
+    (
+      nextMode: StudioMode,
+      templateKey?: keyof typeof BOARD_TEMPLATES
+    ) => {
+      setStudioMode(nextMode);
+      setModeLauncherOpen(false);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("briefing_studio_mode", nextMode);
+      }
+
+      if (templateKey && BOARD_TEMPLATES[templateKey]) {
+        const tpl = BOARD_TEMPLATES[templateKey];
+        setBoardMeta({
+          id: tpl.id,
+          title: tpl.title,
+          clientName: tpl.clientName,
+          systemType: tpl.systemType,
+          studioMode: nextMode,
+          version: tpl.version,
+          objective: tpl.objective,
+          updatedAt: new Date().toISOString(),
+        });
+        setNodes(tpl.nodes);
+        setEdges(styleEdges(tpl.edges, theme === "dark", edgeRoutingStyle));
+        setSelectedNodeId(tpl.nodes.find((n) => n.data.category !== "section")?.id || null);
+        showToast(
+          nextMode === "drawio"
+            ? `Modo Diagrama Livre (Draw.io) iniciado: "${tpl.title}"`
+            : `Modo Estúdio de Briefing (PRD) iniciado: "${tpl.title}"`
+        );
+      } else {
+        setBoardMeta((prev) => ({ ...prev, studioMode: nextMode }));
+        showToast(
+          nextMode === "drawio"
+            ? "Alternado para Modo Diagrama Livre (Draw.io)!"
+            : "Alternado para Modo Estúdio de Briefing & PRD!"
+        );
+      }
+    },
+    [edgeRoutingStyle, setEdges, setNodes, showToast, theme]
+  );
 
   // Save draft to localStorage automatically
   useEffect(() => {
@@ -493,10 +578,170 @@ export function BriefingStudio() {
           label: anchor.data.category === "decision" ? "SIM" : "Avança",
           animated: true,
         };
-        setEdges((eds) => styleEdges([...eds, newEdge]));
+        setEdges((eds) =>
+          styleEdges([...eds, newEdge], theme === "dark", edgeRoutingStyle)
+        );
       }
     },
-    [isClientMode, nodes, selectedNode, setNodes, setEdges]
+    [
+      edgeRoutingStyle,
+      isClientMode,
+      nodes,
+      selectedNode,
+      setNodes,
+      setEdges,
+      theme,
+    ]
+  );
+
+  // Add a Draw.io technical shape variant to the canvas and auto-connect if a node is selected
+  const handleAddDrawioShape = useCallback(
+    (
+      variant: ShapeVariant,
+      defaultColor: ShapePaletteColor = "default",
+      customTitle?: string
+    ) => {
+      if (isClientMode) return;
+
+      const countOfShapes =
+        nodes.filter((n) => n.data.category === "shape").length + 1;
+
+      const prefixByVariant: Record<ShapeVariant, string> = {
+        rectangle: "PRC",
+        pill: "TRM",
+        diamond: "DEC",
+        cylinder: "DB",
+        parallelogram: "IO",
+        hexagon: "SRV",
+        cloud: "CLD",
+        document: "DOC",
+        actor: "ACT",
+        circle: "CON",
+        callout: "OBS",
+        text: "TXT",
+      };
+
+      const titleByVariant: Record<ShapeVariant, string> = {
+        rectangle: "Processo / Etapa",
+        pill: "Início / Fim",
+        diamond: "Condição?",
+        cylinder: "Storage / DB",
+        parallelogram: "Entrada / Saída",
+        hexagon: "Microsserviço / Prep",
+        cloud: "Nuvem / API Externa",
+        document: "Documento / Payload",
+        actor: "Ator / Usuário",
+        circle: "Conector",
+        callout: "Nota / Callout Técnico",
+        text: "Texto Livre",
+      };
+
+      const subtitleByVariant: Record<ShapeVariant, string> = {
+        rectangle: "Etapa operacional",
+        pill: "Ponto terminal",
+        diamond: "Desvio lógico",
+        cylinder: "Persistência",
+        parallelogram: "Fluxo de dados",
+        hexagon: "Worker / Gateway",
+        cloud: "Serviço terceiro",
+        document: "Artefato gerado",
+        actor: "Interação externa",
+        circle: "Referência",
+        callout: "Observação de arquitetura",
+        text: "",
+      };
+
+      const dimsByVariant: Record<ShapeVariant, { w: number; h: number }> = {
+        rectangle: { w: 200, h: 100 },
+        pill: { w: 185, h: 82 },
+        diamond: { w: 195, h: 138 },
+        cylinder: { w: 180, h: 128 },
+        parallelogram: { w: 210, h: 100 },
+        hexagon: { w: 200, h: 110 },
+        cloud: { w: 215, h: 120 },
+        document: { w: 195, h: 116 },
+        actor: { w: 136, h: 150 },
+        circle: { w: 124, h: 124 },
+        callout: { w: 215, h: 112 },
+        text: { w: 180, h: 64 },
+      };
+
+      const code = `${prefixByVariant[variant]}-${String(
+        countOfShapes
+      ).padStart(2, "0")}`;
+
+      const anchor =
+        selectedNode && selectedNode.data.category !== "section"
+          ? selectedNode
+          : null;
+
+      const posX = anchor
+        ? anchor.position.x + 280
+        : 200 + ((nodes.length * 45) % 460);
+      const posY = anchor
+        ? anchor.position.y + ((nodes.length % 3) - 1) * 35
+        : 170 + ((nodes.length * 35) % 280);
+
+      const newNodeId = `shape-${variant}-${Date.now()}`;
+      const dims = dimsByVariant[variant];
+
+      const newNode: BriefingNode = {
+        id: newNodeId,
+        type: "shape",
+        position: { x: posX, y: posY },
+        zIndex: 1,
+        style: { width: dims.w, height: dims.h },
+        data: {
+          code,
+          category: "shape",
+          shapeVariant: variant,
+          shapeColor: defaultColor,
+          shapeStroke: variant === "cloud" ? "dashed" : "solid",
+          shapeWidth: dims.w,
+          shapeHeight: dims.h,
+          title: customTitle || titleByVariant[variant],
+          subtitle: subtitleByVariant[variant],
+          priority: "mvp",
+          status: "rascunho",
+        },
+      };
+
+      setNodes((nds) => [
+        ...nds.map((n) => ({ ...n, selected: false })),
+        { ...newNode, selected: true },
+      ]);
+      setSelectedNodeId(newNodeId);
+      setActiveTab("inspector");
+      setDrawerOpen(true);
+
+      if (anchor && variant !== "text" && variant !== "callout") {
+        const newEdge: BriefingEdge = {
+          id: `e-${anchor.id}-${newNodeId}`,
+          source: anchor.id,
+          sourceHandle:
+            anchor.data.category === "decision" ? "yes" : undefined,
+          target: newNodeId,
+          label:
+            anchor.data.category === "decision" ||
+            anchor.data.shapeVariant === "diamond"
+              ? "SIM"
+              : "",
+          animated: true,
+        };
+        setEdges((eds) =>
+          styleEdges([...eds, newEdge], theme === "dark", edgeRoutingStyle)
+        );
+      }
+    },
+    [
+      edgeRoutingStyle,
+      isClientMode,
+      nodes,
+      selectedNode,
+      setEdges,
+      setNodes,
+      theme,
+    ]
   );
 
   // Quick-Chain Text Generator: e.g. "Tela: Login -> Decisão: Tem Conta? -> Tela: Dashboard"
@@ -897,17 +1142,21 @@ export function BriefingStudio() {
 
   const handleLoadProject = useCallback(
     (proj: BoardProject) => {
+      if (proj.studioMode) setStudioMode(proj.studioMode);
       setBoardMeta({
         id: proj.id,
         title: proj.title,
         clientName: proj.clientName,
         systemType: proj.systemType,
+        studioMode: proj.studioMode,
         version: proj.version,
         objective: proj.objective,
         updatedAt: proj.updatedAt,
       });
       setNodes(proj.nodes || []);
-      setEdges(styleEdges(proj.edges || []));
+      setEdges(
+        styleEdges(proj.edges || [], theme === "dark", edgeRoutingStyle)
+      );
       setSelectedNodeId(proj.nodes?.[0]?.id || null);
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
@@ -916,7 +1165,7 @@ export function BriefingStudio() {
       }
       showToast(`Projeto "${proj.title}" aberto!`);
     },
-    [setNodes, setEdges, showToast]
+    [edgeRoutingStyle, setNodes, setEdges, showToast, theme]
   );
 
   // Listen to Phase Export & Approval buttons clicked directly on Section headers on the canvas
@@ -1105,14 +1354,51 @@ export function BriefingStudio() {
     >
       {/* TOP ARCHITECTURAL TITLE BLOCK HEADER (DECLUTTERED & ICON-DRIVEN) */}
       <header className="h-[54px] shrink-0 bg-[var(--bg-panel)] border-b border-[var(--rule-strong)] px-3 sm:px-4 flex items-center justify-between gap-3 z-20">
-        {/* Left: Compact Brand Stamp + Project & Client Identity */}
+        {/* Left: Compact Brand Stamp + Mode Switcher + Project Identity */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-[#16181D] text-[#FAF8F4] border border-[var(--rule-hairline)] rounded-[6px] shrink-0">
+          <button
+            type="button"
+            onClick={() => setModeLauncherOpen(true)}
+            title="Abrir Seletor Inicial de Modo (Estúdio Briefing vs Diagrama Draw.io)"
+            className="flex items-center gap-1.5 px-2 py-1 bg-[#16181D] hover:bg-[#1B4DFF] text-[#FAF8F4] border border-[var(--rule-hairline)] rounded-[6px] shrink-0 transition-colors"
+          >
             <PenTool className="w-3.5 h-3.5 text-[#F5C542]" />
             <span className="font-mono text-[11px] font-bold tracking-tight">
               PLANTA
             </span>
-          </div>
+          </button>
+
+          {/* Top Segmented Mode Switcher: Briefing (PRD) vs Draw.io (Diagrama Livre) */}
+          {!isClientMode && (
+            <div className="flex items-center bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[7px] p-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleSelectStudioMode("briefing")}
+                title="Modo Estúdio de Briefing & PRD (Telas, Regras, APIs e Escopo)"
+                className={`px-2 py-1 rounded-[5px] font-mono text-[10.5px] font-semibold flex items-center gap-1.5 transition-colors ${
+                  studioMode === "briefing"
+                    ? "bg-[#1B4DFF] text-[#FAF8F4]"
+                    : "text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
+                }`}
+              >
+                <Monitor className="w-3 h-3" />
+                <span>Briefing & PRD</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectStudioMode("drawio")}
+                title="Modo Diagrama Livre estilo Draw.io (Formas Vetoriais, Arquitetura & BPMN)"
+                className={`px-2 py-1 rounded-[5px] font-mono text-[10.5px] font-semibold flex items-center gap-1.5 transition-colors ${
+                  studioMode === "drawio"
+                    ? "bg-[#0F766E] text-[#FAF8F4]"
+                    : "text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
+                }`}
+              >
+                <Compass className="w-3 h-3" />
+                <span>Draw.io Livre</span>
+              </button>
+            </div>
+          )}
 
           <div className="min-w-0 flex items-center gap-1.5">
             <input
@@ -1123,9 +1409,9 @@ export function BriefingStudio() {
               onChange={(e) =>
                 setBoardMeta((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="font-bold text-[13.5px] text-[var(--ink-primary)] bg-transparent border border-transparent hover:border-[var(--rule-hairline)] focus:border-[#1B4DFF] focus:bg-[var(--bg-card)] px-2 py-0.5 rounded-[5px] truncate max-w-[180px] sm:max-w-[260px] focus:outline-none"
+              className="font-bold text-[13.5px] text-[var(--ink-primary)] bg-transparent border border-transparent hover:border-[var(--rule-hairline)] focus:border-[#1B4DFF] focus:bg-[var(--bg-card)] px-2 py-0.5 rounded-[5px] truncate max-w-[160px] sm:max-w-[230px] focus:outline-none"
             />
-            <span className="hidden lg:inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[4px] text-[var(--ink-secondary)] shrink-0">
+            <span className="hidden xl:inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[4px] text-[var(--ink-secondary)] shrink-0">
               <span>{boardMeta.clientName}</span>
               <span className="opacity-40">·</span>
               <span className="text-[var(--ink-primary)] font-semibold">
@@ -1301,128 +1587,371 @@ export function BriefingStudio() {
 
       {/* WORKSPACE BODY: LEFT BLOCK SIDEBAR + INFINITE CANVAS + RIGHT DOSSIER DRAWER */}
       <div className="flex-1 flex min-h-0 relative">
-        {/* LEFT VERTICAL CREATION SIDEBAR */}
+        {/* LEFT VERTICAL CREATION SIDEBAR (ADAPTS TO STUDIO MODE: BRIEFING vs DRAW.IO) */}
         {!isClientMode && (
-          <aside className="w-[148px] shrink-0 h-full bg-[var(--bg-panel)] border-r border-[var(--rule-strong)] p-2.5 flex flex-col justify-between select-none z-10 overflow-y-auto">
-            <div className="flex flex-col gap-1.5">
-              {/* Product Semantics Column */}
-              <button
-                type="button"
-                onClick={() => handleAddBlock("screen")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold flex items-center gap-2 transition-colors"
-              >
-                <Monitor className="w-3.5 h-3.5 shrink-0" />
-                <span>+ Tela</span>
-              </button>
+          <aside className="w-[172px] shrink-0 h-full bg-[var(--bg-panel)] border-r border-[var(--rule-strong)] p-2.5 flex flex-col justify-between select-none z-10 overflow-y-auto">
+            {studioMode === "briefing" ? (
+              <div className="flex flex-col gap-1.5">
+                <div className="px-1 pb-0.5 flex items-center justify-between">
+                  <span className="font-mono text-[10px] font-bold text-[var(--ink-secondary)]">
+                    BLOCOS DE PRODUTO
+                  </span>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => handleAddBlock("action")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
-              >
-                <Zap className="w-3.5 h-3.5 text-[#B45309] shrink-0" />
-                <span>+ Ação</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock("decision")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
-              >
-                <GitBranch className="w-3.5 h-3.5 text-[#D9381E] shrink-0" />
-                <span>+ Decisão</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock("integration")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
-              >
-                <Webhook className="w-3.5 h-3.5 text-[#6D28D9] shrink-0" />
-                <span>+ API</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock("database")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
-              >
-                <Database className="w-3.5 h-3.5 text-[#0F766E] shrink-0" />
-                <span>+ Tabela DB</span>
-              </button>
-
-              <div className="h-[1px] w-full bg-[var(--rule-hairline)] my-1" />
-
-              {/* FigJam Freeform Column */}
-              <button
-                type="button"
-                onClick={() => handleAddBlock("sticky")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12px] font-semibold flex items-center gap-2 transition-colors"
-              >
-                <StickyNote className="w-3.5 h-3.5 shrink-0" />
-                <span>+ Post-it</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock("shape")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
-              >
-                <Square className="w-3.5 h-3.5 shrink-0" />
-                <span>+ Forma</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock("section")}
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
-              >
-                <Frame className="w-3.5 h-3.5 shrink-0" />
-                <span>+ Fase</span>
-              </button>
-
-              <div className="h-[1px] w-full bg-[var(--rule-hairline)] my-1" />
-
-              {/* Auto-Organize Phases Action */}
-              <button
-                type="button"
-                onClick={handleAutoOrganizeByPhase}
-                disabled={nodes.length === 0}
-                title="Alinhar e espaçar automaticamente os blocos dentro de cada Fase"
-                className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
-              >
-                <LayoutGrid className="w-3.5 h-3.5 text-[#3B66FF] shrink-0" />
-                <span>Organizar Fases</span>
-              </button>
-
-              {/* Primary Clear Canvas Action in Left Sidebar */}
-              <button
-                type="button"
-                onClick={handleClearCanvas}
-                disabled={nodes.length === 0}
-                title="Limpar todos os blocos da tela"
-                className={`w-full px-2.5 py-2 rounded-[8px] text-[12px] font-semibold flex items-center gap-2 transition-colors ${
-                  nodes.length > 0
-                    ? "bg-[#D9381E] hover:bg-[#B42318] text-[#FAF8F4]"
-                    : "bg-[#D9381E]/35 text-[#FAF8F4]/60 cursor-not-allowed"
-                }`}
-              >
-                <Eraser className="w-3.5 h-3.5 shrink-0" />
-                <span>Limpar Tela</span>
-              </button>
-
-              {undoSnapshot && nodes.length === 0 && (
+                {/* Product Semantics Column */}
                 <button
                   type="button"
-                  onClick={handleUndoClear}
-                  title="Restaurar o fluxo anterior"
+                  onClick={() => handleAddBlock("screen")}
                   className="w-full px-2.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold flex items-center gap-2 transition-colors"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                  <span>Desfazer</span>
+                  <Monitor className="w-3.5 h-3.5 shrink-0" />
+                  <span>+ Tela</span>
                 </button>
-              )}
-            </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("action")}
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Zap className="w-3.5 h-3.5 text-[#B45309] shrink-0" />
+                  <span>+ Ação</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("decision")}
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+                >
+                  <GitBranch className="w-3.5 h-3.5 text-[#D9381E] shrink-0" />
+                  <span>+ Decisão</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("integration")}
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Webhook className="w-3.5 h-3.5 text-[#6D28D9] shrink-0" />
+                  <span>+ API</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("database")}
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Database className="w-3.5 h-3.5 text-[#0F766E] shrink-0" />
+                  <span>+ Tabela DB</span>
+                </button>
+
+                <div className="h-[1px] w-full bg-[var(--rule-hairline)] my-1" />
+
+                {/* FigJam Freeform Column */}
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("sticky")}
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12px] font-semibold flex items-center gap-2 transition-colors"
+                >
+                  <StickyNote className="w-3.5 h-3.5 shrink-0" />
+                  <span>+ Post-it</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddDrawioShape("rectangle", "default")}
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Square className="w-3.5 h-3.5 shrink-0" />
+                  <span>+ Forma</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("section")}
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Frame className="w-3.5 h-3.5 shrink-0" />
+                  <span>+ Fase</span>
+                </button>
+
+                <div className="h-[1px] w-full bg-[var(--rule-hairline)] my-1" />
+
+                {/* Auto-Organize Phases Action */}
+                <button
+                  type="button"
+                  onClick={handleAutoOrganizeByPhase}
+                  disabled={nodes.length === 0}
+                  title="Alinhar e espaçar automaticamente os blocos dentro de cada Fase"
+                  className="w-full px-2.5 py-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[12px] font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 text-[#3B66FF] shrink-0" />
+                  <span>Organizar Fases</span>
+                </button>
+
+                {/* Primary Clear Canvas Action in Left Sidebar */}
+                <button
+                  type="button"
+                  onClick={handleClearCanvas}
+                  disabled={nodes.length === 0}
+                  title="Limpar todos os blocos da tela"
+                  className={`w-full px-2.5 py-2 rounded-[8px] text-[12px] font-semibold flex items-center gap-2 transition-colors ${
+                    nodes.length > 0
+                      ? "bg-[#D9381E] hover:bg-[#B42318] text-[#FAF8F4]"
+                      : "bg-[#D9381E]/35 text-[#FAF8F4]/60 cursor-not-allowed"
+                  }`}
+                >
+                  <Eraser className="w-3.5 h-3.5 shrink-0" />
+                  <span>Limpar Tela</span>
+                </button>
+
+                {undoSnapshot && nodes.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={handleUndoClear}
+                    title="Restaurar o fluxo anterior"
+                    className="w-full px-2.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold flex items-center gap-2 transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                    <span>Desfazer</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              /* DRAW.IO TECHNICAL STENCIL PALETTE */
+              <div className="flex flex-col gap-2">
+                <div className="px-1 flex items-center justify-between">
+                  <span className="font-mono text-[10px] font-bold text-[#2DD4BF]">
+                    FORMAS DRAW.IO
+                  </span>
+                  <span className="font-mono text-[10px] text-[var(--ink-secondary)]">
+                    VETOR
+                  </span>
+                </div>
+
+                {/* 2-Column Draw.io Geometric Stencil Grid */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("rectangle", "cobalt")}
+                    title="Adicionar Retângulo / Processo"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#3B66FF] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <Square className="w-4 h-4 text-[#3B66FF]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Processo
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("pill", "emerald")}
+                    title="Adicionar Pílula / Início ou Fim"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#149E93] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <span className="w-5 h-3.5 rounded-full border-2 border-[#149E93] block mt-0.5" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Início/Fim
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("diamond", "vermilion")}
+                    title="Adicionar Losango / Decisão"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#E54D2E] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <Diamond className="w-4 h-4 text-[#E54D2E]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Decisão
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleAddDrawioShape("parallelogram", "cobalt")
+                    }
+                    title="Adicionar Paralelogramo / Entrada ou Saída (I/O)"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#3B66FF] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <span className="w-4 h-3.5 border-2 border-[#3B66FF] -skew-x-12 block mt-0.5" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Dados I/O
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("cylinder", "emerald")}
+                    title="Adicionar Cilindro / Banco de Dados"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#149E93] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <Database className="w-4 h-4 text-[#149E93]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Cilindro DB
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("hexagon", "violet")}
+                    title="Adicionar Hexágono / Microsserviço ou Gateway"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#8B5CF6] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <Hexagon className="w-4 h-4 text-[#8B5CF6]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Serviço
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("cloud", "amber")}
+                    title="Adicionar Nuvem / API Externa"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#F5C542] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <Cloud className="w-4 h-4 text-[#F5C542]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Nuvem
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("document", "default")}
+                    title="Adicionar Documento / Relatório"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#3B66FF] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-[var(--ink-primary)]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Documento
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("actor", "cobalt")}
+                    title="Adicionar Ator UML (Stickman)"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#3B66FF] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <User className="w-4 h-4 text-[#3B66FF]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Ator UML
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("circle", "violet")}
+                    title="Adicionar Círculo / Conector"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#8B5CF6] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <Circle className="w-4 h-4 text-[#8B5CF6]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Círculo
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("callout", "amber")}
+                    title="Adicionar Balão de Anotação (Callout)"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#F5C542] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4 text-[#F5C542]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Callout
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddDrawioShape("text", "default")}
+                    title="Adicionar Rótulo de Texto Livre"
+                    className="p-2 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--rule-hairline)] hover:border-[#3B66FF] flex flex-col items-center gap-1 transition-colors"
+                  >
+                    <Type className="w-4 h-4 text-[var(--ink-primary)]" />
+                    <span className="font-mono text-[10px] text-[var(--ink-primary)]">
+                      Texto
+                    </span>
+                  </button>
+                </div>
+
+                {/* Swimlane / Container & Sticky Note */}
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("section")}
+                  className="w-full px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[11.5px] font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Frame className="w-3.5 h-3.5 text-[#2DD4BF] shrink-0" />
+                  <span>+ Raia / Container</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBlock("sticky")}
+                  className="w-full px-2.5 py-1.5 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[11.5px] font-semibold flex items-center gap-2 transition-colors"
+                >
+                  <StickyNote className="w-3.5 h-3.5 shrink-0" />
+                  <span>+ Post-it</span>
+                </button>
+
+                {/* Edge Routing Selector (Orthogonal vs Curva vs Reta) */}
+                <div className="pt-1 border-t border-[var(--rule-hairline)] space-y-1">
+                  <span className="block font-mono text-[10px] text-[var(--ink-secondary)] px-0.5">
+                    ESTILO DO CONECTOR
+                  </span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {(
+                      [
+                        { id: "smoothstep", label: "90°" },
+                        { id: "bezier", label: "Curva" },
+                        { id: "straight", label: "Reta" },
+                      ] as const
+                    ).map((rt) => (
+                      <button
+                        key={rt.id}
+                        type="button"
+                        onClick={() => setEdgeRoutingStyle(rt.id)}
+                        className={`py-1 rounded-[5px] font-mono text-[10px] border transition-colors ${
+                          edgeRoutingStyle === rt.id
+                            ? "bg-[#0F766E] text-[#FAF8F4] border-[#0F766E] font-semibold"
+                            : "bg-[var(--bg-card)] text-[var(--ink-secondary)] border-[var(--rule-hairline)] hover:text-[var(--ink-primary)]"
+                        }`}
+                      >
+                        {rt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-[1px] w-full bg-[var(--rule-hairline)] my-0.5" />
+
+                <button
+                  type="button"
+                  onClick={handleAutoOrganizeByPhase}
+                  disabled={nodes.length === 0}
+                  className="w-full px-2.5 py-1.5 rounded-[8px] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] text-[11.5px] font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 text-[#3B66FF] shrink-0" />
+                  <span>Alinhar Grade</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearCanvas}
+                  disabled={nodes.length === 0}
+                  className={`w-full px-2.5 py-1.5 rounded-[8px] text-[11.5px] font-semibold flex items-center gap-2 transition-colors ${
+                    nodes.length > 0
+                      ? "bg-[#D9381E] hover:bg-[#B42318] text-[#FAF8F4]"
+                      : "bg-[#D9381E]/35 text-[#FAF8F4]/60 cursor-not-allowed"
+                  }`}
+                >
+                  <Eraser className="w-3.5 h-3.5 shrink-0" />
+                  <span>Limpar Tela</span>
+                </button>
+              </div>
+            )}
           </aside>
         )}
 
@@ -1537,67 +2066,146 @@ export function BriefingStudio() {
             {/* Top-Right Telemetry & Legend Stamp on Canvas */}
             <Panel position="top-right" className="!m-3 hidden md:block">
               <div className="px-3 py-2 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[10px] flex items-center gap-3 font-mono text-[11px] text-[var(--ink-primary)]">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-[2px] bg-[#1B4DFF]" />
-                  Telas:{" "}
-                  <strong className="tabular-nums">
-                    {nodes.filter((n) => n.data.category === "screen").length}
-                  </strong>
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-[2px] bg-[#D9381E]" />
-                  Decisões:{" "}
-                  <strong className="tabular-nums">
-                    {nodes.filter((n) => n.data.category === "decision").length}
-                  </strong>
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-[2px] bg-[#6D28D9]" />
-                  APIs:{" "}
-                  <strong className="tabular-nums">
-                    {
-                      nodes.filter((n) => n.data.category === "integration")
-                        .length
-                    }
-                  </strong>
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-[2px] bg-[#F5C542] border border-black/30" />
-                  Notas:{" "}
-                  <strong className="tabular-nums">
-                    {nodes.filter((n) => n.data.category === "sticky").length}
-                  </strong>
-                </span>
+                {studioMode === "drawio" ? (
+                  <>
+                    <span className="inline-flex items-center gap-1.5 text-[#2DD4BF] font-semibold">
+                      <Compass className="w-3.5 h-3.5" />
+                      DRAW.IO
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#1B4DFF]" />
+                      Formas:{" "}
+                      <strong className="tabular-nums">
+                        {
+                          nodes.filter((n) => n.data.category !== "section")
+                            .length
+                        }
+                      </strong>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#0F766E]" />
+                      Raias:{" "}
+                      <strong className="tabular-nums">
+                        {
+                          nodes.filter((n) => n.data.category === "section")
+                            .length
+                        }
+                      </strong>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#6D28D9]" />
+                      Conexões:{" "}
+                      <strong className="tabular-nums">{edges.length}</strong>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#1B4DFF]" />
+                      Telas:{" "}
+                      <strong className="tabular-nums">
+                        {
+                          nodes.filter((n) => n.data.category === "screen")
+                            .length
+                        }
+                      </strong>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#D9381E]" />
+                      Decisões:{" "}
+                      <strong className="tabular-nums">
+                        {
+                          nodes.filter((n) => n.data.category === "decision")
+                            .length
+                        }
+                      </strong>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#6D28D9]" />
+                      APIs:{" "}
+                      <strong className="tabular-nums">
+                        {
+                          nodes.filter((n) => n.data.category === "integration")
+                            .length
+                        }
+                      </strong>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#F5C542] border border-black/30" />
+                      Notas:{" "}
+                      <strong className="tabular-nums">
+                        {
+                          nodes.filter((n) => n.data.category === "sticky")
+                            .length
+                        }
+                      </strong>
+                    </span>
+                  </>
+                )}
               </div>
             </Panel>
 
             {/* Empty State Card when canvas is cleared */}
             {nodes.length === 0 && !isClientMode && (
               <Panel position="top-center" className="!mt-24">
-                <div className="p-5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[14px] max-w-[420px] text-center space-y-3">
+                <div className="p-5 bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[14px] max-w-[440px] text-center space-y-3">
                   <p className="text-[14px] font-bold text-[var(--ink-primary)]">
-                    Canvas Limpo · Pronto para o Briefing
+                    {studioMode === "drawio"
+                      ? "Canvas Limpo · Modo Diagrama Draw.io"
+                      : "Canvas Limpo · Pronto para o Briefing"}
                   </p>
                   <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
-                    Comece adicionando a primeira tela da jornada do cliente ou digite o fluxo completo na barra de captura rápida no topo.
+                    {studioMode === "drawio"
+                      ? "Escolha formas vetoriais na paleta à esquerda (Processo, Losango, Cilindro DB, Nuvem, Ator UML) ou carregue um template."
+                      : "Comece adicionando a primeira tela da jornada do cliente ou digite o fluxo completo na barra de captura rápida no topo."}
                   </p>
                   <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => handleAddBlock("screen")}
-                      className="px-3.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
-                    >
-                      <Monitor className="w-3.5 h-3.5" />
-                      <span>+ Criar 1ª Tela</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddBlock("sticky")}
-                      className="px-3.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
-                    >
-                      <StickyNote className="w-3.5 h-3.5" />
-                      <span>+ Adicionar Post-it</span>
-                    </button>
+                    {studioMode === "drawio" ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleAddDrawioShape("rectangle", "cobalt")
+                          }
+                          className="px-3.5 py-2 rounded-[8px] bg-[#0F766E] hover:bg-[#115E59] text-[#FAF8F4] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                        >
+                          <Square className="w-3.5 h-3.5" />
+                          <span>+ Criar 1º Bloco</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSelectStudioMode(
+                              "drawio",
+                              "drawio-arquitetura"
+                            )
+                          }
+                          className="px-3.5 py-2 rounded-[8px] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-strong)] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                        >
+                          <Compass className="w-3.5 h-3.5 text-[#2DD4BF]" />
+                          <span>Carregar Exemplo Arquitetura</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleAddBlock("screen")}
+                          className="px-3.5 py-2 rounded-[8px] bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                        >
+                          <Monitor className="w-3.5 h-3.5" />
+                          <span>+ Criar 1ª Tela</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAddBlock("sticky")}
+                          className="px-3.5 py-2 rounded-[8px] bg-[#FFF3C4] hover:bg-[#F5C542] text-[#1F1A0C] border border-[#B8860B] text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors"
+                        >
+                          <StickyNote className="w-3.5 h-3.5" />
+                          <span>+ Adicionar Post-it</span>
+                        </button>
+                      </>
+                    )}
                     {undoSnapshot && (
                       <button
                         type="button"
@@ -1947,6 +2555,254 @@ export function BriefingStudio() {
                   >
                     Cancelar e Voltar ao Fluxo
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* INITIAL STUDIO MODE LAUNCHER MODAL ("BRIEFING & PRD" vs "DRAW.IO LIVRE") */}
+        {modeLauncherOpen && !isClientMode && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="launcher-modal-title"
+            className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <div className="w-full max-w-[780px] bg-[var(--bg-card)] border border-[var(--rule-strong)] rounded-[14px] overflow-hidden">
+              {/* Top Architectural Title Strip */}
+              <div className="px-5 py-3.5 bg-[var(--bg-panel)] border-b border-[var(--rule-strong)] flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-[#16181D] text-[#FAF8F4] border border-[var(--rule-hairline)] rounded-[6px]">
+                    <PenTool className="w-3.5 h-3.5 text-[#F5C542]" />
+                    <span className="font-mono text-[11px] font-bold tracking-tight">
+                      PLANTA · ESTÚDIO DUAL
+                    </span>
+                  </div>
+                  <h2
+                    id="launcher-modal-title"
+                    className="text-[14px] font-bold text-[var(--ink-primary)]"
+                  >
+                    Escolha qual modo de trabalho você vai usar agora
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModeLauncherOpen(false)}
+                  title="Continuar no projeto atual"
+                  className="p-1.5 text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[6px]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Dual Mode Comparison & Selection Grid */}
+              <div className="p-5 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* OPTION 1: ESTÚDIO DE BRIEFING & PRD */}
+                  <div
+                    className={`p-4 rounded-[12px] border flex flex-col justify-between gap-4 transition-colors ${
+                      studioMode === "briefing"
+                        ? "bg-[var(--bg-subcard)] border-[#1B4DFF]"
+                        : "bg-[var(--bg-panel)] border-[var(--rule-strong)]"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[#1B4DFF] text-[#FAF8F4] font-mono text-[11px] font-semibold">
+                          <Monitor className="w-3.5 h-3.5" />
+                          <span>MODO 01 · BRIEFING & PRD</span>
+                        </span>
+                        <span className="font-mono text-[10px] text-[var(--ink-secondary)]">
+                          PRODUTO & ESCOPO
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <h3 className="text-[14px] font-bold text-[var(--ink-primary)]">
+                          Fluxograma de Briefing & Jornadas de Sistema
+                        </h3>
+                        <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
+                          Ideal para reuniões com clientes e levantamento de requisitos. Blocos com mini-wireframes de tela, rotas, decisões SIM/NÃO, APIs e tabelas que geram automaticamente o <strong>Dossiê PRD</strong>, <strong>SQL</strong> e <strong>Prompts `.MD` por Fase</strong>.
+                        </p>
+                      </div>
+
+                      {/* Mini Visual Schematic Preview */}
+                      <div className="p-2.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[8px] flex items-center justify-between gap-2 font-mono text-[10px]">
+                        <span className="px-2 py-1 bg-[#1B4DFF]/20 text-[#60A5FA] border border-[#3B66FF]/40 rounded-[4px]">
+                          [SCR-01] Tela
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-[var(--ink-secondary)] shrink-0" />
+                        <span className="px-2 py-1 bg-[#D9381E]/20 text-[#F87171] border border-[#D9381E]/40 rounded-[4px]">
+                          [DEC-01] SIM/NÃO
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-[var(--ink-secondary)] shrink-0" />
+                        <span className="px-2 py-1 bg-[#0F766E]/20 text-[#2DD4BF] border border-[#0F766E]/40 rounded-[4px]">
+                          PRD .MD
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-[var(--rule-hairline)]">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectStudioMode("briefing")}
+                        className="w-full py-2.5 px-3 bg-[#1B4DFF] hover:bg-[#1438B8] text-[#FAF8F4] rounded-[8px] text-[12px] font-semibold flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Monitor className="w-4 h-4" />
+                        <span>Entrar no Estúdio de Briefing (Atual)</span>
+                      </button>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSelectStudioMode("briefing", "crm-funil")
+                          }
+                          className="py-1.5 px-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[6px] font-mono text-[10px] font-medium transition-colors"
+                        >
+                          Template CRM Solar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSelectStudioMode("briefing", "canvas-limpo")
+                          }
+                          className="py-1.5 px-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[6px] font-mono text-[10px] font-medium transition-colors"
+                        >
+                          Novo Briefing Limpo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OPTION 2: DIAGRAMA LIVRE ESTILO DRAW.IO */}
+                  <div
+                    className={`p-4 rounded-[12px] border flex flex-col justify-between gap-4 transition-colors ${
+                      studioMode === "drawio"
+                        ? "bg-[var(--bg-subcard)] border-[#0F766E]"
+                        : "bg-[var(--bg-panel)] border-[var(--rule-strong)]"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[#0F766E] text-[#FAF8F4] font-mono text-[11px] font-semibold">
+                          <Compass className="w-3.5 h-3.5" />
+                          <span>MODO 02 · DRAW.IO LIVRE</span>
+                        </span>
+                        <span className="font-mono text-[10px] text-[var(--ink-secondary)]">
+                          VETORIAL & BPMN
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <h3 className="text-[14px] font-bold text-[var(--ink-primary)]">
+                          Diagrama Técnico Livre (Estilo Draw.io / Diagrams.net)
+                        </h3>
+                        <p className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
+                          Paleta lateral completa de geometrias vetoriais redimensionáveis: <strong>Losangos, Cilindros DB, Paralelogramos I/O, Hexágonos, Nuvens, Documentos, Atores UML, Raias e Textos</strong> com conectores em 4 direções.
+                        </p>
+                      </div>
+
+                      {/* Mini Visual Schematic Preview */}
+                      <div className="p-2.5 bg-[var(--bg-card)] border border-[var(--rule-hairline)] rounded-[8px] flex items-center justify-between gap-2 font-mono text-[10px]">
+                        <span className="px-2 py-1 bg-[#6D28D9]/20 text-[#C4B5FD] border border-[#8B5CF6]/40 rounded-[4px]">
+                          ⬡ Gateway
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-[var(--ink-secondary)] shrink-0" />
+                        <span className="px-2 py-1 bg-[#D9381E]/20 text-[#F87171] border border-[#D9381E]/40 rounded-[4px]">
+                          ◆ Losango
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-[var(--ink-secondary)] shrink-0" />
+                        <span className="px-2 py-1 bg-[#0F766E]/20 text-[#2DD4BF] border border-[#0F766E]/40 rounded-[4px]">
+                          ⛁ Cilindro
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-[var(--rule-hairline)]">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSelectStudioMode("drawio", "drawio-arquitetura")
+                        }
+                        className="w-full py-2.5 px-3 bg-[#0F766E] hover:bg-[#115E59] text-[#FAF8F4] rounded-[8px] text-[12px] font-semibold flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Compass className="w-4 h-4" />
+                        <span>Abrir Modo Draw.io · Arquitetura Cloud</span>
+                      </button>
+
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSelectStudioMode(
+                              "drawio",
+                              "drawio-atendimento-bot"
+                            )
+                          }
+                          className="py-1.5 px-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[6px] font-mono text-[10px] font-medium transition-colors"
+                        >
+                          Triagem & Bot
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSelectStudioMode(
+                              "drawio",
+                              "drawio-processo-bpmn"
+                            )
+                          }
+                          className="py-1.5 px-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[6px] font-mono text-[10px] font-medium transition-colors"
+                        >
+                          Fluxo BPMN
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStudioMode("drawio");
+                            setModeLauncherOpen(false);
+                            setNodes([]);
+                            setEdges([]);
+                            setSelectedNodeId(null);
+                            setBoardMeta((prev) => ({
+                              ...prev,
+                              id: `drawio-${Date.now().toString().slice(-5)}`,
+                              title: "Novo Diagrama Draw.io em Branco",
+                              systemType: "Diagrama Técnico / Draw.io",
+                              studioMode: "drawio",
+                            }));
+                            showToast("Canvas Draw.io em branco iniciado!");
+                          }}
+                          className="py-1.5 px-2 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[6px] font-mono text-[10px] font-medium transition-colors"
+                        >
+                          Em Branco
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer bar: Saved Projects Quick Access & Hint */}
+                <div className="pt-3 border-t border-[var(--rule-hairline)] flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[var(--ink-secondary)]">
+                  <span>
+                    Dica: Você pode alternar entre <strong>Briefing & PRD</strong> e <strong>Draw.io Livre</strong> a qualquer momento na barra superior, inclusive no mesmo projeto.
+                  </span>
+                  {savedBoards.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModeLauncherOpen(false);
+                        setDrawerOpen(true);
+                        setActiveTab("cloud");
+                      }}
+                      className="px-2.5 py-1 bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--rule-hairline)] rounded-[6px] font-mono text-[10px] font-semibold inline-flex items-center gap-1.5 shrink-0"
+                    >
+                      <FolderOpen className="w-3 h-3 text-[#3B66FF]" />
+                      <span>Ver Meus Projetos Salvos ({savedBoards.length})</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
